@@ -7142,8 +7142,11 @@ body.ai-job-preview-open .item-box {
 }
 
 .practice-shell .job-hero-copy h1,
+.resume-interview-shell .job-hero-copy h1,
 .practice-shell .job-card h2,
-.practice-shell .job-ai-panel h2 {
+.resume-interview-shell .job-card h2,
+.practice-shell .job-ai-panel h2,
+.resume-interview-shell .job-ai-panel h2 {
     margin: 0;
 }
 
@@ -7163,21 +7166,27 @@ body.ai-job-preview-open .item-box {
     font-weight: 600;
 }
 
-.practice-start-form {
+.practice-start-form,
+.resume-interview-start-form {
     display: grid;
     gap: 14px;
     min-width: 0;
 }
 
-.practice-start-form label {
+.practice-start-form label,
+.resume-interview-start-form label {
     color: var(--jb-ink);
     font-weight: 600;
 }
 
 .practice-start-form input[type="file"],
+.resume-interview-start-form input[type="file"],
 .practice-start-form select,
+.resume-interview-start-form select,
 .practice-start-form textarea,
-.practice-start-form input[type="text"] {
+.resume-interview-start-form textarea,
+.practice-start-form input[type="text"],
+.resume-interview-start-form input[type="text"] {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -7186,15 +7195,21 @@ body.ai-job-preview-open .item-box {
 .html-aiinterview-mock-practice-product-page .practice-difficulty-section,
 .html-aiinterview-mock-practice-product-page .practice-alternative-inputs,
 .html-aiinterview-mock-practice-product-page .practice-pathway,
+.html-aiinterview-resume-interview-product-page .resume-interview-section,
 .html-aiinterview-mock-practice-product-page .practice-additional-section,
+.html-aiinterview-resume-interview-product-page .resume-interview-additional-section,
 .html-aiinterview-mock-practice-product-page .practice-additional-inputs,
-.html-aiinterview-mock-practice-product-page .practice-resume-choice {
+.html-aiinterview-resume-interview-product-page .resume-interview-additional-inputs,
+.html-aiinterview-mock-practice-product-page .practice-resume-choice,
+.html-aiinterview-resume-interview-product-page .resume-interview-choice {
     min-width: 0;
 }
 
 .html-aiinterview-mock-practice-product-page .practice-difficulty-section,
 .html-aiinterview-mock-practice-product-page .practice-pathway,
-.html-aiinterview-mock-practice-product-page .practice-additional-section {
+.html-aiinterview-resume-interview-product-page .resume-interview-section,
+.html-aiinterview-mock-practice-product-page .practice-additional-section,
+.html-aiinterview-resume-interview-product-page .resume-interview-additional-section {
     display: grid;
     gap: 8px;
 }
@@ -7206,28 +7221,32 @@ body.ai-job-preview-open .item-box {
     background: var(--jb-action-secondary-hover-background);
 }
 
-.html-aiinterview-mock-practice-product-page .practice-additional-section {
+.html-aiinterview-mock-practice-product-page .practice-additional-section,
+.html-aiinterview-resume-interview-product-page .resume-interview-additional-section {
     padding: 14px;
     border: 1px solid var(--job-border);
     border-radius: 10px;
     background: var(--job-bg);
 }
 
-.html-aiinterview-mock-practice-product-page .practice-additional-section .attributes dt {
+.html-aiinterview-mock-practice-product-page .practice-additional-section .attributes dt,
+.html-aiinterview-resume-interview-product-page .resume-interview-additional-section .attributes dt {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 4px 6px;
 }
 
-.html-aiinterview-mock-practice-product-page .practice-additional-section .attributes .required {
+.html-aiinterview-mock-practice-product-page .practice-additional-section .attributes .required,
+.html-aiinterview-resume-interview-product-page .resume-interview-additional-section .attributes .required {
     width: auto;
     color: #c62828;
     font-size: 16px;
     line-height: 1;
 }
 
-.html-aiinterview-mock-practice-product-page .practice-field-heading {
+.html-aiinterview-mock-practice-product-page .practice-field-heading,
+.html-aiinterview-resume-interview-product-page .resume-interview-heading {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -7239,14 +7258,16 @@ body.ai-job-preview-open .item-box {
     line-height: 1.35;
 }
 
-.html-aiinterview-mock-practice-product-page .practice-required-marker {
+.html-aiinterview-mock-practice-product-page .practice-required-marker,
+.html-aiinterview-resume-interview-product-page .resume-interview-required {
     color: #c62828;
     font-size: 18px;
     font-weight: 800;
     line-height: 1;
 }
 
-.html-aiinterview-mock-practice-product-page .practice-required-text {
+.html-aiinterview-mock-practice-product-page .practice-required-text,
+.html-aiinterview-resume-interview-product-page .resume-interview-required-text {
     color: #8f1d1d;
     font-size: 12px;
     font-weight: 700;
@@ -7268,6 +7289,7 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-mock-practice-product-page .practice-field-help,
+.html-aiinterview-resume-interview-product-page .resume-interview-help,
 .html-aiinterview-mock-practice-product-page .practice-alternative-guidance {
     margin: 0;
     color: var(--job-muted);
@@ -7304,7 +7326,8 @@ body.ai-job-preview-open .item-box {
     font-weight: 700;
 }
 
-.html-aiinterview-mock-practice-product-page .practice-resume-choice {
+.html-aiinterview-mock-practice-product-page .practice-resume-choice,
+.html-aiinterview-resume-interview-product-page .resume-interview-choice {
     display: grid;
     gap: 5px;
 }
@@ -7346,7 +7369,8 @@ body.ai-job-preview-open .item-box {
 }
 
 /* The visible pathway headings replace the generic prompts while retaining them as accessible control names. */
-.html-aiinterview-mock-practice-product-page .practice-pathway .attributes dt {
+.html-aiinterview-mock-practice-product-page .practice-pathway .attributes dt,
+.html-aiinterview-resume-interview-product-page .resume-interview-section .attributes dt {
     position: absolute !important;
     width: 1px !important;
     height: 1px !important;
@@ -7359,18 +7383,23 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-mock-practice-product-page .practice-start-form .attributes select,
+.html-aiinterview-resume-interview-product-page .resume-interview-start-form .attributes select,
 .html-aiinterview-mock-practice-product-page .practice-start-form select,
-.html-aiinterview-mock-practice-product-page .practice-start-form input[type="file"] {
+.html-aiinterview-resume-interview-product-page .resume-interview-start-form select,
+.html-aiinterview-mock-practice-product-page .practice-start-form input[type="file"],
+.html-aiinterview-resume-interview-product-page .resume-interview-start-form input[type="file"] {
     min-height: 42px;
     height: auto;
 }
 
-.html-aiinterview-mock-practice-product-page .practice-start-form .option-list input:focus-visible {
+.html-aiinterview-mock-practice-product-page .practice-start-form .option-list input:focus-visible,
+.html-aiinterview-resume-interview-product-page .resume-interview-start-form .option-list input:focus-visible {
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
 }
 
-.html-aiinterview-mock-practice-product-page .practice-start-error {
+.html-aiinterview-mock-practice-product-page .practice-start-error,
+.html-aiinterview-resume-interview-product-page .resume-interview-start-error {
     max-width: 100%;
     overflow-wrap: anywhere;
 }
@@ -7384,12 +7413,14 @@ body.ai-job-preview-open .item-box {
     margin-top: 10px;
 }
 
-.practice-description {
+.practice-description,
+.resume-interview-description {
     color: var(--job-text);
     line-height: 1.8;
 }
 
-.practice-details-page {
+.practice-details-page,
+.resume-interview-details-page {
     --job-bg: var(--jb-bg);
     --job-card: var(--jb-white);
     --job-border: var(--jb-border);
@@ -7401,26 +7432,31 @@ body.ai-job-preview-open .item-box {
     --job-shadow: 0 18px 40px color-mix(in srgb, var(--job-text) 6%, transparent);
 }
 
-.practice-details-page .page-body {
+.practice-details-page .page-body,
+.resume-interview-details-page .page-body {
     padding-top: 12px;
 }
 
-.practice-shell {
+.practice-shell,
+.resume-interview-shell {
     gap: 28px;
 }
 
-.practice-shell .job-hero {
+.practice-shell .job-hero,
+.resume-interview-shell .job-hero {
     align-items: start;
     grid-template-columns: minmax(0, 1.2fr) minmax(384px, 480px);
     gap: 10px;
     padding: 30px;
 }
 
-.practice-shell .job-hero-copy {
+.practice-shell .job-hero-copy,
+.resume-interview-shell .job-hero-copy {
     gap: 22px;
 }
 
-.practice-shell .job-kicker {
+.practice-shell .job-kicker,
+.resume-interview-shell .job-kicker {
     padding: 8px 14px;
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);
@@ -7428,20 +7464,23 @@ body.ai-job-preview-open .item-box {
     line-height: 1.2;
 }
 
-.practice-shell .job-hero-copy h1 {
+.practice-shell .job-hero-copy h1,
+.resume-interview-shell .job-hero-copy h1 {
     color: var(--job-text);
     font-size: 52px;
     line-height: 1.02;
 }
 
-.practice-shell .job-lead {
+.practice-shell .job-lead,
+.resume-interview-shell .job-lead {
     max-width: 760px;
     color: var(--job-muted);
     font-size: 18px;
     line-height: 1.75;
 }
 
-.practice-shell .job-highlight-pills span {
+.practice-shell .job-highlight-pills span,
+.resume-interview-shell .job-highlight-pills span {
     padding: 10px 15px;
     border-radius: 999px;
     background: var(--job-card);
@@ -7450,19 +7489,22 @@ body.ai-job-preview-open .item-box {
     font-weight: 700;
 }
 
-.practice-shell .job-grid {
+.practice-shell .job-grid,
+.resume-interview-shell .job-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
 }
 
-.practice-shell .job-grid .job-card {
+.practice-shell .job-grid .job-card,
+.resume-interview-shell .job-grid .job-card {
     display: grid;
     gap: 8px;
     min-height: 0;
     padding: 20px 22px;
 }
 
-.practice-shell .job-grid .job-card strong {
+.practice-shell .job-grid .job-card strong,
+.resume-interview-shell .job-grid .job-card strong {
     color: var(--job-text);
     font-size: 13px;
     font-weight: 700;
@@ -7470,40 +7512,47 @@ body.ai-job-preview-open .item-box {
     text-transform: uppercase;
 }
 
-.practice-shell .job-grid .job-card span {
+.practice-shell .job-grid .job-card span,
+.resume-interview-shell .job-grid .job-card span {
     color: var(--job-muted);
     font-size: 16px;
     line-height: 1.5;
 }
 
-.practice-start-panel {
+.practice-start-panel,
+.resume-interview-start-panel {
     padding: 22px;
 }
 
-.practice-start-panel .job-ai-grid {
+.practice-start-panel .job-ai-grid,
+.resume-interview-start-panel .job-ai-grid {
     display: grid;
     gap: 2px;
 }
 
-.practice-start-panel .job-ai-lead {
+.practice-start-panel .job-ai-lead,
+.resume-interview-start-panel .job-ai-lead {
     color: var(--jb-muted);
     font-size: 10px;
     line-height: 1.4;
 }
 
-.practice-start-panel .job-ai-card {
+.practice-start-panel .job-ai-card,
+.resume-interview-start-panel .job-ai-card {
     padding: 10px;
     border-radius: 8px;
 }
 
-.practice-start-form .attributes {
+.practice-start-form .attributes,
+.resume-interview-start-form .attributes {
     display: grid;
     gap: 8px;
     margin: 0;
     min-width: 0;
 }
 
-.practice-start-form .attributes dl {
+.practice-start-form .attributes dl,
+.resume-interview-start-form .attributes dl {
     display: grid;
     gap: 8px;
     margin: 0;
@@ -7511,19 +7560,24 @@ body.ai-job-preview-open .item-box {
 }
 
 .practice-start-form .attributes dt,
-.practice-start-form .attributes dd {
+.resume-interview-start-form .attributes dt,
+.practice-start-form .attributes dd,
+.resume-interview-start-form .attributes dd {
     margin: 0;
     min-width: 0;
     max-width: 100%;
 }
 
-.practice-start-form .attributes dt {
+.practice-start-form .attributes dt,
+.resume-interview-start-form .attributes dt {
     display: grid;
     gap: 2px;
 }
 
 .practice-start-form .attributes .text-prompt,
-.practice-start-form label {
+.resume-interview-start-form .attributes .text-prompt,
+.practice-start-form label,
+.resume-interview-start-form label {
     color: var(--jb-ink);
     font-size: 10px;
     font-weight: 700;
@@ -7531,15 +7585,21 @@ body.ai-job-preview-open .item-box {
     text-transform: uppercase;
 }
 
-.practice-start-form .attributes .attribute-description {
+.practice-start-form .attributes .attribute-description,
+.resume-interview-start-form .attributes .attribute-description {
     display: none;
 }
 
 .practice-start-form .attributes select,
+.resume-interview-start-form .attributes select,
 .practice-start-form select,
+.resume-interview-start-form select,
 .practice-start-form input[type="text"],
+.resume-interview-start-form input[type="text"],
 .practice-start-form input[type="file"],
-.practice-start-form textarea {
+.resume-interview-start-form input[type="file"],
+.practice-start-form textarea,
+.resume-interview-start-form textarea {
     display: block;
     box-sizing: border-box;
     min-height: 36px;
@@ -7558,7 +7618,9 @@ body.ai-job-preview-open .item-box {
 }
 
 .practice-start-form .attributes select,
-.practice-start-form select {
+.resume-interview-start-form .attributes select,
+.practice-start-form select,
+.resume-interview-start-form select {
     height: 32px;
     min-height: 32px;
     padding: 6px 30px 6px 10px;
@@ -7566,10 +7628,15 @@ body.ai-job-preview-open .item-box {
 
 /* Keep mock-practice controls inside the start card on narrow screens. */
 .practice-start-form .attributes .required,
+.resume-interview-start-form .attributes .required,
 .practice-start-form .attributes .option-list-control,
+.resume-interview-start-form .attributes .option-list-control,
 .practice-start-form .attributes .option-list,
+.resume-interview-start-form .attributes .option-list,
 .practice-start-form .attributes .input-box,
-.practice-start-form .attributes .datepicker {
+.resume-interview-start-form .attributes .input-box,
+.practice-start-form .attributes .datepicker,
+.resume-interview-start-form .attributes .datepicker {
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
@@ -7577,16 +7644,22 @@ body.ai-job-preview-open .item-box {
 }
 
 .practice-start-form .attributes select:focus,
+.resume-interview-start-form .attributes select:focus,
 .practice-start-form select:focus,
+.resume-interview-start-form select:focus,
 .practice-start-form input[type="text"]:focus,
+.resume-interview-start-form input[type="text"]:focus,
 .practice-start-form input[type="file"]:focus,
-.practice-start-form textarea:focus {
+.resume-interview-start-form input[type="file"]:focus,
+.practice-start-form textarea:focus,
+.resume-interview-start-form textarea:focus {
     border-color: var(--jb-action-focus-color);
     box-shadow: 0 0 0 var(--jb-action-focus-width) color-mix(in srgb, var(--jb-action-focus-color) 16%, transparent);
     outline: 0;
 }
 
-.practice-start-form .option-list {
+.practice-start-form .option-list,
+.resume-interview-start-form .option-list {
     display: grid;
     gap: 10px;
     margin: 0;
@@ -7594,7 +7667,8 @@ body.ai-job-preview-open .item-box {
     list-style: none;
 }
 
-.practice-start-form .option-list li {
+.practice-start-form .option-list li,
+.resume-interview-start-form .option-list li {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -7605,7 +7679,8 @@ body.ai-job-preview-open .item-box {
     background: var(--jb-white);
 }
 
-.practice-start-form .option-list label {
+.practice-start-form .option-list label,
+.resume-interview-start-form .option-list label {
     margin: 0;
     color: var(--jb-ink);
     font-size: 15px;
@@ -7614,23 +7689,27 @@ body.ai-job-preview-open .item-box {
     text-transform: none;
 }
 
-.practice-start-form .job-ai-note {
+.practice-start-form .job-ai-note,
+.resume-interview-start-form .job-ai-note {
     margin: 0;
     color: var(--jb-muted);
     font-size: 10px;
     line-height: 1.4;
 }
 
-.practice-start-form .job-ai-credit-notice {
+.practice-start-form .job-ai-credit-notice,
+.resume-interview-start-form .job-ai-credit-notice {
     margin-top: 10px;
     font-size: 0.82rem;
 }
 
-.practice-start-form .job-ai-actions {
+.practice-start-form .job-ai-actions,
+.resume-interview-start-form .job-ai-actions {
     margin-top: 4px;
 }
 
-.practice-start-form [data-practice-start-submit="true"] {
+.practice-start-form [data-practice-start-submit="true"],
+.resume-interview-start-form [data-interview-start-submit="true"] {
     width: 100%;
     min-height: 52px;
     padding: 14px 18px;
@@ -7642,13 +7721,15 @@ body.ai-job-preview-open .item-box {
     text-transform: uppercase;
 }
 
-.html-aiinterview-mock-practice-product-page .job-ai-card > .button-1 {
+.html-aiinterview-mock-practice-product-page .job-ai-card > .button-1,
+.html-aiinterview-resume-interview-product-page .job-ai-card > .button-1 {
     border-color: var(--jb-action-primary-border);
     background: var(--jb-action-primary-background);
     color: var(--jb-action-primary-foreground);
 }
 
-.html-aiinterview-mock-practice-product-page .job-ai-card > .button-1:focus-visible {
+.html-aiinterview-mock-practice-product-page .job-ai-card > .button-1:focus-visible,
+.html-aiinterview-resume-interview-product-page .job-ai-card > .button-1:focus-visible {
     border-color: var(--jb-action-primary-border);
     background: var(--jb-action-primary-background);
     color: var(--jb-action-primary-foreground);
@@ -7656,13 +7737,15 @@ body.ai-job-preview-open .item-box {
     outline-offset: var(--jb-action-focus-offset);
 }
 
-.html-aiinterview-mock-practice-product-page .job-ai-card > .button-1:hover {
+.html-aiinterview-mock-practice-product-page .job-ai-card > .button-1:hover,
+.html-aiinterview-resume-interview-product-page .job-ai-card > .button-1:hover {
     border-color: var(--jb-action-primary-hover-border);
     background: var(--jb-action-primary-hover-background);
     color: var(--jb-action-primary-hover-foreground);
 }
 
-.html-aiinterview-mock-practice-product-page .job-ai-card > .button-1:active {
+.html-aiinterview-mock-practice-product-page .job-ai-card > .button-1:active,
+.html-aiinterview-resume-interview-product-page .job-ai-card > .button-1:active {
     border-color: var(--jb-action-active-background);
     background: var(--jb-action-active-background);
     color: var(--jb-action-active-foreground);
@@ -7673,7 +7756,8 @@ body.ai-job-preview-open .item-box {
     gap: 24px;
 }
 
-.practice-about {
+.practice-about,
+.resume-interview-about {
     min-width: 0;
     padding: 20px 24px;
     border: 1px solid var(--job-border);
@@ -7682,7 +7766,8 @@ body.ai-job-preview-open .item-box {
     box-shadow: var(--job-shadow);
 }
 
-.practice-about h2 {
+.practice-about h2,
+.resume-interview-about h2 {
     margin: 0 0 12px;
     color: var(--job-text);
     font-family: "Fjalla One", Arial, sans-serif;
@@ -7692,7 +7777,8 @@ body.ai-job-preview-open .item-box {
     text-transform: uppercase;
 }
 
-.practice-about .practice-description {
+.practice-about .practice-description,
+.resume-interview-about .resume-interview-description {
     color: var(--job-text);
     line-height: 1.75;
     overflow-wrap: anywhere;
@@ -7717,14 +7803,16 @@ body.ai-job-preview-open .item-box {
 }
 
 .practice-content-grid .practice-detail-list li,
-.practice-content-grid .practice-description {
+.practice-content-grid .practice-description,
+.practice-content-grid .resume-interview-description {
     color: var(--job-muted);
     font-size: 16px;
     line-height: 1.75;
 }
 
 @media (max-width: 1024px) {
-    .practice-shell .job-hero {
+    .practice-shell .job-hero,
+    .resume-interview-shell .job-hero {
         grid-template-columns: minmax(0, 1fr);
     }
 
@@ -7734,37 +7822,45 @@ body.ai-job-preview-open .item-box {
 }
 
 @media (max-width: 767px) {
-    .practice-shell .job-hero {
+    .practice-shell .job-hero,
+    .resume-interview-shell .job-hero {
         padding: 22px;
         gap: 24px;
     }
 
-    .practice-shell .job-hero-copy h1 {
+    .practice-shell .job-hero-copy h1,
+    .resume-interview-shell .job-hero-copy h1 {
         font-size: 38px;
     }
 
-    .practice-shell .job-lead {
+    .practice-shell .job-lead,
+    .resume-interview-shell .job-lead {
         font-size: 16px;
         line-height: 1.7;
     }
 
-    .practice-shell .job-grid {
+    .practice-shell .job-grid,
+    .resume-interview-shell .job-grid {
         grid-template-columns: minmax(0, 1fr);
     }
 
     .practice-start-panel,
+    .resume-interview-start-panel,
     .practice-start-panel .job-ai-card,
+    .resume-interview-start-panel .job-ai-card,
     .practice-content-grid .job-card {
         padding: 18px;
     }
 
     .html-aiinterview-mock-practice-product-page .practice-difficulty-section,
     .html-aiinterview-mock-practice-product-page .practice-alternative-inputs,
-    .html-aiinterview-mock-practice-product-page .practice-additional-section {
+    .html-aiinterview-mock-practice-product-page .practice-additional-section,
+    .html-aiinterview-resume-interview-product-page .resume-interview-additional-section {
         padding: 12px;
     }
 
-    .html-aiinterview-mock-practice-product-page .practice-field-heading {
+    .html-aiinterview-mock-practice-product-page .practice-field-heading,
+    .html-aiinterview-resume-interview-product-page .resume-interview-heading {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
     }
@@ -7777,7 +7873,9 @@ body.ai-job-preview-open .item-box {
 
 @media (max-width: 420px) {
     .html-aiinterview-mock-practice-product-page .practice-start-panel,
-    .html-aiinterview-mock-practice-product-page .practice-start-panel .job-ai-card {
+    .html-aiinterview-resume-interview-product-page .resume-interview-start-panel,
+    .html-aiinterview-mock-practice-product-page .practice-start-panel .job-ai-card,
+    .html-aiinterview-resume-interview-product-page .resume-interview-start-panel .job-ai-card {
         padding: 12px;
     }
 
@@ -7785,7 +7883,8 @@ body.ai-job-preview-open .item-box {
         font-size: 14px;
     }
 
-    .html-aiinterview-mock-practice-product-page .practice-start-form .option-list li {
+    .html-aiinterview-mock-practice-product-page .practice-start-form .option-list li,
+    .html-aiinterview-resume-interview-product-page .resume-interview-start-form .option-list li {
         align-items: flex-start;
         padding: 10px;
     }
@@ -8724,19 +8823,22 @@ body.ai-job-preview-open .item-box {
     }
 }
 
-.practice-start-error {
+.practice-start-error,
+.resume-interview-start-error {
     display: block;
     margin-top: 12px;
 }
 
-.practice-start-form [data-practice-start-submit="true"] {
+.practice-start-form [data-practice-start-submit="true"],
+.resume-interview-start-form [data-interview-start-submit="true"] {
     border: 1px solid var(--jb-action-primary-border);
     background: var(--jb-action-primary-background);
     color: var(--jb-action-primary-foreground);
     box-shadow: none;
 }
 
-.practice-start-form [data-practice-start-submit="true"]:focus-visible {
+.practice-start-form [data-practice-start-submit="true"]:focus-visible,
+.resume-interview-start-form [data-interview-start-submit="true"]:focus-visible {
     border-color: var(--jb-action-primary-border);
     background: var(--jb-action-primary-background);
     color: var(--jb-action-primary-foreground);
@@ -8744,19 +8846,22 @@ body.ai-job-preview-open .item-box {
     outline-offset: var(--jb-action-focus-offset);
 }
 
-.practice-start-form [data-practice-start-submit="true"]:hover:not(:disabled) {
+.practice-start-form [data-practice-start-submit="true"]:hover:not(:disabled),
+.resume-interview-start-form [data-interview-start-submit="true"]:hover:not(:disabled) {
     border-color: var(--jb-action-primary-hover-border);
     background: var(--jb-action-primary-hover-background);
     color: var(--jb-action-primary-hover-foreground);
 }
 
-.practice-start-form [data-practice-start-submit="true"]:active:not(:disabled) {
+.practice-start-form [data-practice-start-submit="true"]:active:not(:disabled),
+.resume-interview-start-form [data-interview-start-submit="true"]:active:not(:disabled) {
     border-color: var(--jb-action-active-background);
     background: var(--jb-action-active-background);
     color: var(--jb-action-active-foreground);
 }
 
-.practice-start-form button:disabled {
+.practice-start-form button:disabled,
+.resume-interview-start-form button:disabled {
     cursor: wait;
     opacity: 0.72;
 }
@@ -11085,52 +11190,69 @@ body.ai-job-preview-open .item-box {
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-primary,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .job-ai-action-primary,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .apply-btn.job-ai-action {
     border-color: var(--jb-action-primary-border);
     background: var(--jb-action-primary-background);
     color: var(--jb-action-primary-foreground);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-primary:focus-visible,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action:focus-visible {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .job-ai-action-primary:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .apply-btn.job-ai-action:focus-visible {
     border-color: var(--jb-action-primary-border);
     background: var(--jb-action-primary-background);
     color: var(--jb-action-primary-foreground);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-primary:hover:not(:disabled),
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action:hover:not(:disabled) {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .job-ai-action-primary:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .apply-btn.job-ai-action:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .apply-btn.job-ai-action:hover:not(:disabled) {
     border-color: var(--jb-action-primary-hover-border);
     background: var(--jb-action-primary-hover-background);
     color: var(--jb-action-primary-hover-foreground);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .job-ai-action-secondary,
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .start-interview-btn.job-ai-action,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-background);
     color: var(--jb-action-secondary-foreground);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .job-ai-action-secondary:hover:not(:disabled),
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .start-interview-btn.job-ai-action:hover:not(:disabled),
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:hover:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:hover:not(:disabled),
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action-secondary:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .job-ai-action-secondary:focus-visible,
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .start-interview-btn.job-ai-action:focus-visible,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:focus-visible {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .start-interview-btn.job-ai-action:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions [data-start-interview-button="true"].job-ai-action:focus-visible {
     border-color: var(--jb-action-secondary-border);
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action:active:not(:disabled) {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action:active:not(:disabled),
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .job-ai-action:active:not(:disabled) {
     border-color: var(--jb-action-active-background);
     background: var(--jb-action-active-background);
     color: var(--jb-action-active-foreground);
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action:focus-visible {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-actions .job-ai-action:focus-visible,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-actions .job-ai-action:focus-visible {
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
 }
@@ -11141,21 +11263,26 @@ body.ai-job-preview-open .item-box {
 }
 
 /* Approved customer secondary controls share the Venture action contract. */
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-panel {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-panel,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page, .html-aiinterview-mock-start-page) .job-ai-panel {
     border-top-color: var(--jb-border);
     border-right-color: var(--jb-border);
     border-bottom-color: var(--jb-border);
     background: var(--jb-white);
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-card {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-card,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page, .html-aiinterview-mock-start-page) .job-ai-card {
     border-color: var(--jb-border);
     background: var(--jb-action-secondary-hover-background);
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-card label,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page, .html-aiinterview-mock-start-page) .job-ai-card label,
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-panel h2,
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-panel h3 {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page, .html-aiinterview-mock-start-page) .job-ai-panel h2,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-panel h3,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page, .html-aiinterview-mock-start-page) .job-ai-panel h3 {
     color: var(--jb-ink);
 }
 
@@ -11164,7 +11291,8 @@ body.ai-job-preview-open .item-box {
     background: var(--jb-white);
 }
 
-:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-credit-notice {
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page, .html-aiinterview-mock-start-page) .job-ai-credit-notice,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page, .html-aiinterview-mock-start-page) .job-ai-credit-notice {
     border-left-color: var(--jb-action-primary-border);
     background: var(--jb-action-secondary-hover-background);
     color: var(--jb-action-secondary-foreground);
@@ -11176,9 +11304,13 @@ body.ai-job-preview-open .item-box {
 }
 
 :is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-hero,
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-hero,
 :is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-company-logo,
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-company-logo,
 :is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-pill,
-:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-highlight-pills span {
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-pill,
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-highlight-pills span,
+:is(.html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-highlight-pills span {
     background: var(--job-card);
 }
 
@@ -11416,9 +11548,12 @@ body.ai-job-preview-open .item-box {
 }
 
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-aiinterview-mock-practice-product-page) .job-ai-card select,
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-aiinterview-resume-interview-product-page) .job-ai-card select,
 :is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-mock-practice-product-page) .job-ai-card input[type="file"],
+:is(.html-home-page .sfi-inline-filter, .html-category-page, .html-job-details-page, .html-aiinterview-job-details-page, .html-aiinterview-resume-interview-product-page) .job-ai-card input[type="file"],
 .html-aiinterview-mock-start-page .mock-start select,
-.html-aiinterview-mock-practice-product-page .practice-start-form select {
+.html-aiinterview-mock-practice-product-page .practice-start-form select,
+.html-aiinterview-resume-interview-product-page .resume-interview-start-form select {
     background: var(--jb-action-secondary-background);
     color: var(--jb-action-secondary-foreground);
 }
@@ -11435,7 +11570,8 @@ body.ai-job-preview-open .item-box {
 }
 
 .html-aiinterview-mock-start-page .mock-start select:focus-visible,
-.html-aiinterview-mock-practice-product-page .practice-start-form select:focus-visible {
+.html-aiinterview-mock-practice-product-page .practice-start-form select:focus-visible,
+.html-aiinterview-resume-interview-product-page .resume-interview-start-form select:focus-visible {
     border-color: var(--jb-action-secondary-border);
     outline: var(--jb-action-focus-width) solid var(--jb-action-focus-color);
     outline-offset: var(--jb-action-focus-offset);
@@ -12219,57 +12355,5 @@ a.ai-home-performer-name:focus-visible {
 
     .html-aiinterview-employer-dashboard-page .invite-form-actions-row .button-1 {
         width: 100%;
-    }
-}
-.resume-interview-section {
-    display: grid;
-    gap: 10px;
-}
-
-.resume-interview-heading {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    font-weight: 700;
-}
-
-.resume-interview-required {
-    color: #d9534f;
-}
-
-.resume-interview-required-text {
-    color: var(--jb-muted, #909090);
-    font-size: 12px;
-    font-weight: 400;
-}
-
-.resume-interview-help {
-    margin: 0;
-    color: var(--jb-muted, #909090);
-    font-size: 13px;
-    line-height: 1.35;
-}
-
-.resume-interview-choice {
-    display: grid;
-    gap: 6px;
-}
-
-.resume-interview-choice select,
-.resume-interview-choice input[type="file"] {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-@media (max-width: 640px) {
-    .resume-interview-heading {
-        font-size: 15px;
-    }
-
-    .resume-interview-choice select,
-    .resume-interview-choice input[type="file"] {
-        font-size: 14px;
     }
 }
