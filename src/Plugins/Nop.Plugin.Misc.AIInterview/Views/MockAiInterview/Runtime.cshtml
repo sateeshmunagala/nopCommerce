@@ -2748,13 +2748,13 @@
                 if (!config.recordingAvailable || !recordingEnabled)
                 {
                     await stopLiveMediaForCompletion();
-                    return false;
+                    return 'nothing-to-upload';
                 }
 
                 if (!mediaRecorder && preservedRecordingSegments.length === 0 && recordingChunks.length === 0) {
                     setRecordingStatus('', false);
                     await stopLiveMediaForCompletion();
-                    return false;
+                    return 'nothing-to-upload';
                 }
 
                 try {
@@ -2765,7 +2765,7 @@
                     if (uploaded || activeRecordingStatusMessage === 'Uploading interview recording...')
                         setRecordingStatus('', false);
                     await stopLiveMediaForCompletion();
-                    return uploaded;
+                    return uploaded ? 'uploaded' : 'failed';
                 } catch (error) {
                     const message = error?.message || 'Recording upload failed.';
                     logActivity(`Final recording upload before completion failed: ${message}`);
@@ -2776,7 +2776,7 @@
                         !runtimeStoppedOrCompleted,
                         runtimeStoppedOrCompleted);
                     await stopLiveMediaForCompletion();
-                    return false;
+                    return 'failed';
                 }
             })();
 
@@ -2917,12 +2917,12 @@
         const finalizeCompletedState = async (result) => {
             isSpeakingOrSubmitting = true;
             try {
-                const recordingUploaded = await withTimeout(
+                const recordingOutcome = await withTimeout(
                     finalizeRecordingBeforeCompletion(),
                     finalizationWaitTimeoutMs,
                     'Recording upload timed out.');
 
-                if (!recordingUploaded && config.recordingAvailable && recordingEnabled) {
+                if (recordingOutcome === 'failed' && config.recordingAvailable && recordingEnabled) {
                     logActivity('recording-upload-failed-before-report-redirect');
                     setRecordingStatus('Recording upload incomplete.', false, true);
                 }

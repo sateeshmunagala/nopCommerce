@@ -739,6 +739,16 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void RuntimeView_RecordingOutcomeUsesTriState()
+    {
+        var runtimeViewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));
+
+        Assert.That(runtimeViewText, Does.Contain("return 'nothing-to-upload';"));
+        Assert.That(runtimeViewText, Does.Contain("recordingOutcome === 'failed'"));
+        Assert.That(runtimeViewText, Does.Not.Contain("if (!recordingUploaded && config.recordingAvailable"));
+    }
+
+    [Test]
     public void RuntimeView_CreditWarningUsesTopStatusUpgradeAndFiveSecondRedirectHooks()
     {
         var runtimeView = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "MockAiInterview", "Runtime.cshtml"));

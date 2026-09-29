@@ -10,8 +10,8 @@ namespace Nop.Plugin.Misc.AIInterview.Services;
 
 public partial class InterviewAiClient
 {
-    private const int ResumeProfileMaxCompletionTokens = 2400;
-    private const int ResumeProfileRetryMaxCompletionTokens = 3600;
+    private const int ResumeProfileMaxCompletionTokens = 8000;
+    private const int ResumeProfileRetryMaxCompletionTokens = 15000;
     private const int ResumeProfileMaxResumeTextLength = 8000;
     private const int ResumeProfileRetryMaxResumeTextLength = 5000;
     private const int QuestionPlanMaxQuestionLength = 170;
