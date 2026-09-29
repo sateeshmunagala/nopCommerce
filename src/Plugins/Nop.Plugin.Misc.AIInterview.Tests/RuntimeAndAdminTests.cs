@@ -4763,6 +4763,19 @@ public class RuntimeAndAdminTests
     }
 
     [Test]
+    public void ResumeInterviewTemplate_OmitsDifficultyAndSkillInputs()
+    {
+        var viewText = File.ReadAllText(TestFilePathHelper.GetPluginFilePath("Views", "ProductTemplate.ResumeInterview.cshtml"));
+
+        Assert.That(viewText, Does.Contain("resume-interview-section"));
+        Assert.That(viewText, Does.Contain("data-interview-start-submit"));
+        Assert.That(viewText, Does.Not.Contain("practice-difficulty-section"));
+        Assert.That(viewText, Does.Not.Contain("practice-skill-pathway"));
+        Assert.That(viewText, Does.Not.Contain("skillModel"));
+        Assert.That(viewText, Does.Not.Contain("difficultyModel"));
+    }
+
+    [Test]
     public async Task Admin_Invite_Validation_InvalidAttempts()
     {
         _customerService.Setup(x => x.GetCustomerByIdAsync(1)).ReturnsAsync(new Customer { Id = 1, VendorId = 1 });

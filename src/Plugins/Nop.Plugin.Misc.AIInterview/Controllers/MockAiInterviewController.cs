@@ -638,7 +638,22 @@ public class MockAiInterviewController : BasePluginController
             return false;
 
         return string.Equals(productTemplate.ViewPath, AIInterviewDefaults.MockPracticeProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(productTemplate.Name, AIInterviewDefaults.MockPracticeProductTemplateName, StringComparison.OrdinalIgnoreCase);
+            string.Equals(productTemplate.Name, AIInterviewDefaults.MockPracticeProductTemplateName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(productTemplate.ViewPath, AIInterviewDefaults.ResumeInterviewProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(productTemplate.Name, AIInterviewDefaults.ResumeInterviewProductTemplateName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    protected virtual async Task<bool> IsResumeInterviewProductAsync(Product product)
+    {
+        if (product == null || product.ProductTemplateId <= 0 || _productTemplateService == null)
+            return false;
+
+        var productTemplate = await _productTemplateService.GetProductTemplateByIdAsync(product.ProductTemplateId);
+        if (productTemplate == null)
+            return false;
+
+        return string.Equals(productTemplate.ViewPath, AIInterviewDefaults.ResumeInterviewProductTemplateViewPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(productTemplate.Name, AIInterviewDefaults.ResumeInterviewProductTemplateName, StringComparison.OrdinalIgnoreCase);
     }
 
     protected virtual string NormalizeInterviewType(InterviewSession session)
@@ -816,10 +831,11 @@ public class MockAiInterviewController : BasePluginController
         IFormFile resumeFile,
         InterviewSession reusableSession,
         int selectedResumeDownloadId,
-        ISet<int> ownedResumeDownloadIds)
+        ISet<int> ownedResumeDownloadIds,
+        bool resumeOnly = false)
     {
         var validationErrors = new List<string>();
-        var isDifficultyMissing = string.IsNullOrWhiteSpace(selectionResult?.Difficulty);
+        var isDifficultyMissing = !resumeOnly && string.IsNullOrWhiteSpace(selectionResult?.Difficulty);
 
         if (selectionResult?.Errors?.Count > 0)
             validationErrors.AddRange(selectionResult.Errors.Where(error => !string.IsNullOrWhiteSpace(error)));
@@ -835,12 +851,18 @@ public class MockAiInterviewController : BasePluginController
             ownedResumeDownloadIds != null &&
             ownedResumeDownloadIds.Contains(selectedResumeDownloadId);
         var hasResumeSource = resumeFile != null || hasOwnedSelectedResume || reusableSession?.ResumeDownloadId > 0;
-        var isSkillOrResumeMissing = !(selectionResult?.HasPracticeSkill ?? false) && !hasResumeSource;
+        var isSkillOrResumeMissing = resumeOnly
+            ? !hasResumeSource
+            : !(selectionResult?.HasPracticeSkill ?? false) && !hasResumeSource;
         if (isSkillOrResumeMissing)
         {
             validationErrors.Add(await GetLocalizedTextAsync(
-                "Plugins.Misc.AIInterview.MockPractice.SkillOrResumeRequired",
-                "Select a practice skill or provide a resume to start the practice interview."));
+                resumeOnly
+                    ? "Plugins.Misc.AIInterview.ResumeInterview.ResumeRequired"
+                    : "Plugins.Misc.AIInterview.MockPractice.SkillOrResumeRequired",
+                resumeOnly
+                    ? "Select a previous resume or upload a resume to start this AI interview."
+                    : "Select a practice skill or provide a resume to start the practice interview."));
         }
 
         if (validationErrors.Count == 0)
@@ -1131,14 +1153,17 @@ public class MockAiInterviewController : BasePluginController
             return await LocalizedErrorAsync("Common.NotAvailable", "The requested job is not available.", 404);
 
         var isMockPracticeProduct = await IsMockPracticeProductAsync(product);
+        var isResumeInterviewProduct = await IsResumeInterviewProductAsync(product);
         MockPracticeSelectionResult mockPracticeSelection = null;
         string selectedProductAttributesJson = null;
         if (isMockPracticeProduct)
         {
             mockPracticeSelection = await SerializeSelectedProductAttributesAsync(product, form);
             selectedProductAttributesJson = mockPracticeSelection.SelectedProductAttributesJson;
-            difficulty = ResolveMockPracticeDifficulty(selectedProductAttributesJson,
-                !string.IsNullOrWhiteSpace(mockPracticeSelection.Difficulty) ? mockPracticeSelection.Difficulty : (!string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty));
+            difficulty = isResumeInterviewProduct
+                ? AIInterviewDefaults.DefaultInterviewDifficulty
+                : ResolveMockPracticeDifficulty(selectedProductAttributesJson,
+                    !string.IsNullOrWhiteSpace(mockPracticeSelection.Difficulty) ? mockPracticeSelection.Difficulty : (!string.IsNullOrWhiteSpace(form["difficulty"]) ? form["difficulty"] : difficulty));
         }
         else if (product != null && _jobInterviewExperienceService != null)
             difficulty = await _jobInterviewExperienceService.ResolveInterviewDifficultyAsync(product, form) ?? AIInterviewDefaults.DefaultInterviewDifficulty;
@@ -1168,7 +1193,7 @@ public class MockAiInterviewController : BasePluginController
 
         if (isMockPracticeProduct)
         {
-            var mockPracticeValidation = await ValidateMockPracticeStartAsync(mockPracticeSelection, resumeFile, reusableSession, selectedResumeDownloadId, ownedResumeDownloadIds);
+            var mockPracticeValidation = await ValidateMockPracticeStartAsync(mockPracticeSelection, resumeFile, reusableSession, selectedResumeDownloadId, ownedResumeDownloadIds, isResumeInterviewProduct);
             if (!string.IsNullOrWhiteSpace(mockPracticeValidation.ErrorMessage))
                 return await LocalizedErrorAsync(mockPracticeValidation.ResourceKey, mockPracticeValidation.ErrorMessage);
         }

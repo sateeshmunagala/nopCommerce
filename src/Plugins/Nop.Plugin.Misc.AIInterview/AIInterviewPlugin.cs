@@ -357,6 +357,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureJobProductTemplateAsync();
         await EnsureFixedQuestionProductTemplateAsync();
         await EnsureMockPracticeProductTemplateAsync();
+        await EnsureResumeInterviewProductTemplateAsync();
         await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
         await DeleteJobAutoExpiryTasksAsync();
@@ -613,6 +614,46 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         if (!string.Equals(template.IgnoredProductTypes, ignoredProductTypes, StringComparison.Ordinal))
         {
             template.IgnoredProductTypes = ignoredProductTypes;
+            changed = true;
+        }
+
+        if (changed)
+            await _productTemplateService.UpdateProductTemplateAsync(template);
+    }
+
+    protected async Task EnsureResumeInterviewProductTemplateAsync()
+    {
+        if (_productTemplateService == null)
+            return;
+
+        var templates = await _productTemplateService.GetAllProductTemplatesAsync();
+        var template = templates.FirstOrDefault(item =>
+            string.Equals(item.ViewPath, AIInterviewDefaults.ResumeInterviewProductTemplateViewPath, StringComparison.OrdinalIgnoreCase)) ??
+            templates.FirstOrDefault(item =>
+                string.Equals(item.Name, AIInterviewDefaults.ResumeInterviewProductTemplateName, StringComparison.OrdinalIgnoreCase));
+
+        if (template == null)
+        {
+            await _productTemplateService.InsertProductTemplateAsync(new ProductTemplate
+            {
+                Name = AIInterviewDefaults.ResumeInterviewProductTemplateName,
+                ViewPath = AIInterviewDefaults.ResumeInterviewProductTemplateViewPath,
+                DisplayOrder = 22,
+                IgnoredProductTypes = ((int)ProductType.GroupedProduct).ToString()
+            });
+            return;
+        }
+
+        var changed = false;
+        if (!string.Equals(template.Name, AIInterviewDefaults.ResumeInterviewProductTemplateName, StringComparison.Ordinal))
+        {
+            template.Name = AIInterviewDefaults.ResumeInterviewProductTemplateName;
+            changed = true;
+        }
+
+        if (!string.Equals(template.ViewPath, AIInterviewDefaults.ResumeInterviewProductTemplateViewPath, StringComparison.Ordinal))
+        {
+            template.ViewPath = AIInterviewDefaults.ResumeInterviewProductTemplateViewPath;
             changed = true;
         }
 
@@ -1643,6 +1684,7 @@ public class AIInterviewPlugin : BasePlugin, IMiscPlugin, IWidgetPlugin
         await EnsureJobProductTemplateAsync();
         await EnsureFixedQuestionProductTemplateAsync();
         await EnsureMockPracticeProductTemplateAsync();
+        await EnsureResumeInterviewProductTemplateAsync();
         await EnsurePricingCategoryTemplateAsync();
         await EnsureWidgetActiveAsync();
         await EnsureMessageTemplatesAsync();

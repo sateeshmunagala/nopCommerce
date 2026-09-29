@@ -12221,3 +12221,55 @@ a.ai-home-performer-name:focus-visible {
         width: 100%;
     }
 }
+.resume-interview-section {
+    display: grid;
+    gap: 10px;
+}
+
+.resume-interview-heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.resume-interview-required {
+    color: #d9534f;
+}
+
+.resume-interview-required-text {
+    color: var(--jb-muted, #909090);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.resume-interview-help {
+    margin: 0;
+    color: var(--jb-muted, #909090);
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.resume-interview-choice {
+    display: grid;
+    gap: 6px;
+}
+
+.resume-interview-choice select,
+.resume-interview-choice input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+    .resume-interview-heading {
+        font-size: 15px;
+    }
+
+    .resume-interview-choice select,
+    .resume-interview-choice input[type="file"] {
+        font-size: 14px;
+    }
+}

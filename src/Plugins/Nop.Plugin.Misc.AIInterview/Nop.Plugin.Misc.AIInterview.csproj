@@ -50,6 +50,7 @@
     <None Remove="Views\ProductTemplate.JobDetails.cshtml" />
     <None Remove="Views\ProductTemplate.FixedQuestionJobDetails.cshtml" />
     <None Remove="Views\ProductTemplate.MockPractice.cshtml" />
+    <None Remove="Views\ProductTemplate.ResumeInterview.cshtml" />
     <None Remove="Views\EmployerApplications.cshtml" />
     <None Remove="Views\Report.cshtml" />
     <None Remove="Views\VendorScoreboard.cshtml" />
@@ -166,6 +167,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\ProductTemplate.MockPractice.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\ProductTemplate.ResumeInterview.cshtml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Views\EmployerApplications.cshtml">

@@ -137,6 +137,10 @@ public static class AIInterviewDefaults
 
     public static string MockPracticeProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.MockPractice.cshtml";
 
+    public static string ResumeInterviewProductTemplateName => "AI Interview Resume Based";
+
+    public static string ResumeInterviewProductTemplateViewPath => "~/Plugins/Misc.AIInterview/Views/ProductTemplate.ResumeInterview.cshtml";
+
     public static string InterviewTypeJob => "Job";
 
     public static string InterviewTypeMockPractice => "MockPractice";
