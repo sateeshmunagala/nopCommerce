@@ -4095,8 +4095,9 @@ body.ai-job-preview-open .item-box {
 
 .runtime-permissions-stepper {
     display: grid;
-    grid-template-columns: repeat(7, minmax(82px, 1fr));
-    gap: 5px;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 4px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -4104,18 +4105,18 @@ body.ai-job-preview-open .item-box {
 }
 
 .runtime-permissions-stepper button {
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
+    display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 5px;
     width: 100%;
-    min-height: 40px;
-    padding: 6px 8px;
+    min-height: 34px;
+    padding: 5px 6px;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 6px;
     background: var(--jb-white, #ffffff);
     color: var(--jb-muted, #909090);
-    text-align: left;
+    text-align: center;
     cursor: pointer;
 }
 
@@ -4126,19 +4127,21 @@ body.ai-job-preview-open .item-box {
 
 .runtime-permissions-stepper button span {
     display: grid;
+    flex: 0 0 auto;
     place-items: center;
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 999px;
     color: var(--jb-muted, #909090);
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1;
 }
 
 .runtime-permissions-stepper button strong {
     min-width: 0;
     overflow: hidden;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     line-height: 1.2;
     text-overflow: ellipsis;
@@ -4205,8 +4208,10 @@ body.ai-job-preview-open .item-box {
 .runtime-permissions-screenshare-figure img {
     width: 100%;
     max-width: 420px;
+    max-height: 300px;
     height: auto;
     display: block;
+    object-fit: contain;
     border: 1px solid var(--jb-border, #dedede);
     border-radius: 6px;
     background: var(--jb-white, #ffffff);
@@ -5777,6 +5782,7 @@ body.ai-job-preview-open .item-box {
 
     .runtime-permissions-screenshare-figure img {
         max-width: 100%;
+        max-height: 240px;
     }
 
     .runtime-permissions-screenshare-figure figcaption {
