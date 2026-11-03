@@ -1,0 +1,169 @@
+@model MyActivityPageModel
+
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.MyActivity.Title").Text);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-my-activity-page");
+
+    var sponsoredInterviewsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey });
+    var appliedJobsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityAppliedJobsTabKey });
+    var savedJobsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivitySavedJobsTabKey });
+    var mockInterviewsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityMockInterviewsTabKey });
+    var creditsUrl = Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityCreditsTabKey });
+    ViewData["IsMyActivity"] = true;
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyActivityNavigationTab })
+}
+
+<div class="page ai-my-activity-page" data-my-activity-shell="true">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.MyActivity.Title")</h1>
+    </div>
+    <div class="page-body">
+        <div class="my-activity-shell">
+            <nav class="my-activity-tabs js-my-activity-tabs" aria-label="@T("Plugins.Misc.AIInterview.MyActivity.NavigationLabel")">
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey ? "is-active" : null)"
+                   href="@sponsoredInterviewsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey"
+                   hx-get="@sponsoredInterviewsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.SponsoredInterviews")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivityAppliedJobsTabKey ? "is-active" : null)"
+                   href="@appliedJobsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivityAppliedJobsTabKey"
+                   hx-get="@appliedJobsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivityAppliedJobsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.AppliedJobs")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivitySavedJobsTabKey ? "is-active" : null)"
+                   href="@savedJobsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivitySavedJobsTabKey"
+                   hx-get="@savedJobsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivitySavedJobsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.SavedJobs")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivityMockInterviewsTabKey ? "is-active" : null)"
+                   href="@mockInterviewsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivityMockInterviewsTabKey"
+                   hx-get="@mockInterviewsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivityMockInterviewsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.MockInterviews")
+                </a>
+                <a class="my-activity-tab @(Model.ActiveTab == AIInterviewDefaults.MyActivityCreditsTabKey ? "is-active" : null)"
+                   href="@creditsUrl"
+                   data-my-activity-tab="@AIInterviewDefaults.MyActivityCreditsTabKey"
+                   hx-get="@creditsUrl"
+                   hx-target="#my-activity-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   hx-indicator="#my-activity-loading"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.MyActivityCreditsTabKey ? "page" : null)">
+                    @T("Plugins.Misc.AIInterview.MyActivity.Tab.Credits")
+                </a>
+            </nav>
+
+            <div id="my-activity-loading" class="my-activity-loading" aria-live="polite">
+                @T("Plugins.Misc.AIInterview.MyActivity.Loading")
+            </div>
+
+            <section id="my-activity-content" class="my-activity-content" aria-live="polite">
+                @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MyActivityTabContent.cshtml", Model)
+            </section>
+        </div>
+    </div>
+</div>
+
+<script asp-location="Footer">
+    (function () {
+        var defaultTab = '@AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey';
+        var validTabs = [
+            '@AIInterviewDefaults.MyActivitySponsoredInterviewsTabKey',
+            '@AIInterviewDefaults.MyActivityAppliedJobsTabKey',
+            '@AIInterviewDefaults.MyActivitySavedJobsTabKey',
+            '@AIInterviewDefaults.MyActivityMockInterviewsTabKey',
+            '@AIInterviewDefaults.MyActivityCreditsTabKey'
+        ];
+
+        function normalizeTab(tab) {
+            return validTabs.indexOf(tab) >= 0 ? tab : defaultTab;
+        }
+
+        function syncActiveTab(activeTab) {
+            var tabs = document.querySelectorAll('.js-my-activity-tabs [data-my-activity-tab]');
+            var requestedTab = normalizeTab(activeTab);
+
+            tabs.forEach(function (tab) {
+                tab.classList.remove('is-active');
+                tab.removeAttribute('aria-current');
+            });
+
+            tabs.forEach(function (tab) {
+                if (tab.getAttribute('data-my-activity-tab') === requestedTab) {
+                    tab.classList.add('is-active');
+                    tab.setAttribute('aria-current', 'page');
+                }
+            });
+        }
+
+        function syncFromRenderedPanel() {
+            var panel = document.querySelector('#my-activity-content [data-my-activity-tab-panel="true"]');
+            syncActiveTab(panel ? panel.getAttribute('data-active-tab') : defaultTab);
+        }
+
+        function syncFromCurrentUrl() {
+            var activeTab = new URL(window.location.href).searchParams.get('tab');
+            syncActiveTab(activeTab || defaultTab);
+        }
+
+        syncFromRenderedPanel();
+
+        if (window.__aiMyActivityTabsBound) {
+            return;
+        }
+
+        window.__aiMyActivityTabsBound = true;
+        document.body.addEventListener('htmx:beforeRequest', function (event) {
+            var requestedTab = event.detail && event.detail.elt
+                ? event.detail.elt.closest('[data-my-activity-tab]')
+                : null;
+            if (requestedTab) {
+                syncActiveTab(requestedTab.getAttribute('data-my-activity-tab'));
+            }
+        });
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (event.detail && event.detail.target && event.detail.target.id === 'my-activity-content') {
+                syncFromRenderedPanel();
+            }
+        });
+        document.body.addEventListener('htmx:responseError', syncFromRenderedPanel);
+        document.body.addEventListener('htmx:historyRestore', function () {
+            window.setTimeout(syncFromRenderedPanel, 0);
+        });
+        window.addEventListener('popstate', function () {
+            window.setTimeout(syncFromCurrentUrl, 0);
+        });
+    })();
+</script>

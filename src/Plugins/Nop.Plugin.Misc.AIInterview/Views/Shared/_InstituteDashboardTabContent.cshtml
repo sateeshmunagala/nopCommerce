@@ -1,0 +1,37 @@
+@model InstituteDashboardPageModel
+
+<script>
+    (function () {
+        var activeTab = '@Model.ActiveTab';
+
+        document.querySelectorAll('.institute-dashboard-tab').forEach(function (tab) {
+            var isActive = tab.getAttribute('data-institute-tab') === activeTab;
+            tab.classList.toggle('is-active', isActive);
+            if (isActive) {
+                tab.setAttribute('aria-current', 'page');
+            } else {
+                tab.removeAttribute('aria-current');
+            }
+        });
+
+        if (window.syncInstituteNavigation) {
+            window.syncInstituteNavigation(activeTab);
+        }
+
+        if (window.closeInstituteCreditModal) {
+            window.closeInstituteCreditModal();
+        } else {
+            document.body.classList.remove('institute-credit-modal-open');
+        }
+    })();
+</script>
+
+@switch (Model.ActiveTab)
+{
+    case var value when string.Equals(value, AIInterviewDefaults.InstituteCandidatesTabKey, StringComparison.Ordinal):
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCandidatesTab.cshtml", Model)
+        break;
+    default:
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteDashboardSummaryTab.cshtml", Model)
+        break;
+}

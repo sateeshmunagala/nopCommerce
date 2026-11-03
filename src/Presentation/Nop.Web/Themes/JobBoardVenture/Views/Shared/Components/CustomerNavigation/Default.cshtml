@@ -1,0 +1,64 @@
+@using Nop.Core
+@using Nop.Services.Customers
+@inject IWorkContext workContext
+@inject ICustomerService customerService
+@model CustomerNavigationModel
+@{
+    var currentCustomer = await workContext.GetCurrentCustomerAsync();
+    var isVendorPortal = currentCustomer.VendorId > 0;
+    NopHtml.AppendPageCssClassParts("html-vendor-portal-page");
+}
+<div class="jb-account-nav-shell">
+    <button class="jb-account-nav-toggle" type="button"
+            aria-expanded="false"
+            aria-controls="jb-account-navigation">
+        @T("Account.Navigation")
+    </button>
+    <div class="jb-account-nav-overlay" aria-hidden="true"></div>
+    <section class="block block-account-navigation jb-account-nav @(isVendorPortal ? "jb-vendor-portal-nav" : null)"
+             id="jb-account-navigation"
+             aria-hidden="false">
+        <header class="jb-account-nav-header jb-portal-header">
+            <h2 class="title">@(isVendorPortal ? "MY PORTAL" : T("Account.Navigation"))</h2>
+            <button class="jb-account-nav-close" type="button"
+                    aria-label="@T("Common.Close")">&times;</button>
+        </header>
+        <div class="listbox">
+            <ul class="list">
+                @await Component.InvokeAsync(typeof(WidgetViewComponent),
+                    new { widgetZone = PublicWidgetZones.AccountNavigationBefore,
+                          additionalData = Model })
+                @foreach (var item in Model.CustomerNavigationItems)
+                {
+                    var iconClass = item.ItemClass switch
+                    {
+                        "customer-info" => "fas fa-user",
+                        "customer-orders" => "fas fa-box",
+                        "customer-addresses" => "fas fa-map-marker-alt",
+                        "paypal-payment-tokens" => "fas fa-credit-card",
+                        "change-password" => "fas fa-lock",
+                        "customer-my-activity" => "fas fa-chart-bar",
+                        "customer-vendor-info" => "fas fa-user-tie",
+                        "vendor-employer-dashboard" => "fas fa-chart-line",
+                        "institute-dashboard" => "fas fa-building-columns",
+                        "return-requests" => "fas fa-undo",
+                        "downloadable-products" => "fas fa-download",
+                        _ => string.Empty
+                    };
+                    <li class="@item.ItemClass @(Model.SelectedTab == item.Tab ? "active" : "inactive")">
+                        <a href="@Url.RouteUrl(item.RouteName)">
+                            @if (!string.IsNullOrEmpty(iconClass))
+                            {
+                                <i class="@iconClass" aria-hidden="true"></i>
+                            }
+                            @item.Title
+                        </a>
+                    </li>
+                }
+                @await Component.InvokeAsync(typeof(WidgetViewComponent),
+                    new { widgetZone = PublicWidgetZones.AccountNavigationAfter,
+                          additionalData = Model })
+            </ul>
+        </div>
+    </section>
+</div>

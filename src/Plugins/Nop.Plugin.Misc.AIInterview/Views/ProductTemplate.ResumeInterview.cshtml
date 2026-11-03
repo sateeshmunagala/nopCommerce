@@ -1,0 +1,342 @@
+@model Nop.Web.Models.Catalog.ProductDetailsModel
+
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Nop.Core
+@using Nop.Core.Domain.Catalog
+@using Nop.Core.Domain.Media
+@using Nop.Core.Domain.Seo
+@using Nop.Plugin.Misc.AIInterview.Services
+@using Nop.Services.Customers
+@using Nop.Services.Helpers
+@using Nop.Services.Media
+@inject IWorkContext workContext
+@inject ICustomerService customerService
+@inject IInterviewSessionService interviewSessionService
+@inject IDateTimeHelper dateTimeHelper
+@inject IDownloadService downloadService
+@inject IWebHelper webHelper
+@inject SeoSettings seoSettings
+
+@{
+    Layout = "_ColumnsOne";
+
+    NopHtml.AddTitleParts(string.IsNullOrWhiteSpace(Model.MetaTitle) ? Model.Name : Model.MetaTitle);
+    NopHtml.AddMetaDescriptionParts(Model.MetaDescription);
+    NopHtml.AddMetaKeywordParts(Model.MetaKeywords);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-product-details-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-resume-interview-product-page");
+
+    if (seoSettings.CanonicalUrlsEnabled)
+    {
+        var canonicalUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())?.ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(canonicalUrl))
+            NopHtml.AddCanonicalUrlParts(canonicalUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    }
+    NopHtml.AddJsonLdParts(Model.JsonLd);
+
+    var customer = await workContext.GetCurrentCustomerAsync();
+    var isAuthenticated = customer != null && !await customerService.IsGuestAsync(customer);
+    var resumeEntries = isAuthenticated
+        ? await interviewSessionService.GetPreviousResumeSourcesAsync(customer.Id) ?? new List<PreviousResumeSource>()
+        : new List<PreviousResumeSource>();
+    var availableResumes = new List<SelectListItem>();
+    if (isAuthenticated)
+    {
+        foreach (var entry in resumeEntries)
+        {
+            var download = await downloadService.GetDownloadByIdAsync(entry.ResumeDownloadId);
+            if (download == null)
+                continue;
+
+            var fileName = string.IsNullOrWhiteSpace(download.Filename)
+                ? $"{entry.DefaultLabel} #{entry.ResumeDownloadId}"
+                : download.Filename;
+            var createdLabel = entry.CreatedOnUtc == default
+                ? string.Empty
+                : (await dateTimeHelper.ConvertToUserTimeAsync(entry.CreatedOnUtc, DateTimeKind.Utc)).ToString("yyyy-MM-dd");
+            var optionText = string.IsNullOrWhiteSpace(createdLabel)
+                ? fileName
+                : $"{fileName} ({createdLabel})";
+
+            availableResumes.Add(new SelectListItem
+            {
+                Value = entry.ResumeDownloadId.ToString(),
+                Text = optionText
+            });
+        }
+    }
+
+    var summary = !string.IsNullOrWhiteSpace(Model.ShortDescription)
+        ? Model.ShortDescription
+        : "Upload your resume or pick a previous one. The AI interview builds every question from your actual experience.";
+    var additionalModel = new Nop.Web.Models.Catalog.ProductDetailsModel
+    {
+        Id = Model.Id,
+        AllowAddingOnlyExistingAttributeCombinations = Model.AllowAddingOnlyExistingAttributeCombinations,
+        DisplayAttributeCombinationImagesOnly = Model.DisplayAttributeCombinationImagesOnly,
+        ProductAttributes = Model.ProductAttributes
+    };
+}
+
+@section Breadcrumb
+{
+    @await Html.PartialAsync("_ProductBreadcrumb", Model.Breadcrumb)
+}
+
+<div class="page product-details-page resume-interview-details-page">
+    <div class="page-body">
+        <div class="job-shell resume-interview-shell">
+            <section class="job-hero">
+                <div class="job-hero-copy">
+                    <p class="job-kicker">@Model.Name</p>
+                    <div class="job-lead">@Html.Raw(summary)</div>
+                    <div class="job-grid">
+                        <div class="job-card">
+                            <strong>Session length</strong>
+                            <span>15-25 minutes</span>
+                        </div>
+                        <div class="job-card">
+                            <strong>Question style</strong>
+                            <span>Resume based</span>
+                        </div>
+                        <div class="job-card">
+                            <strong>Input</strong>
+                            <span>Your resume</span>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.FullDescription))
+                    {
+                        <div class="resume-interview-about">
+                            <h2>About this AI Interview</h2>
+                            <div class="resume-interview-description">
+                                @Html.Raw(Model.FullDescription)
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="job-ai-panel resume-interview-start-panel">
+                    <div class="job-ai-grid">
+                        <div>
+                            <h2>Start Interview</h2>
+                        </div>
+
+                        @if (!isAuthenticated)
+                        {
+                            <div class="job-ai-card">
+                                <p class="job-ai-lead">Sign in to start a saved AI interview session and keep your report in your account.</p>
+                                <a class="button-1" href="@Url.RouteUrl("Login")">Sign in</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="job-ai-card">
+                                <form asp-route="@AIInterviewDefaults.MockStartRouteName" method="post" enctype="multipart/form-data" class="resume-interview-start-form" id="product-details-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="productId" value="@Model.Id" />
+                                    <section class="resume-interview-section" aria-labelledby="resume-interview-heading">
+                                        <div class="resume-interview-heading" id="resume-interview-heading">
+                                            <span>Resume</span><span class="resume-interview-required" aria-hidden="true"></span>
+                                            <span class="resume-interview-required-text">Required</span>
+                                        </div>
+                                        <p class="resume-interview-help">Choose a resume you used before, or upload a new one to begin.</p>
+                                        @if (availableResumes.Any())
+                                        {
+                                            <div class="resume-interview-choice">
+                                                <label for="resume-interview-existing">Previous resume</label>
+                                                <select id="resume-interview-existing" name="SelectedResumeDownloadId">
+                                                    <option value="0">Select a previous resume</option>
+                                                    @foreach (var option in availableResumes)
+                                                    {
+                                                        <option value="@option.Value">@option.Text</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                        <div class="resume-interview-choice">
+                                            <label for="resume-interview-upload">Upload new resume</label>
+                                            <input id="resume-interview-upload" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                                        </div>
+                                        <p class="job-ai-note">Accepted formats are PDF and DOCX. Your resume is used only to generate questions.</p>
+                                    </section>
+
+                                    @if (Model.ProductAttributes.Any())
+                                    {
+                                        <section class="resume-interview-additional-section" aria-labelledby="resume-interview-additional-heading">
+                                            <div class="resume-interview-heading" id="resume-interview-additional-heading">
+                                                <span>Additional preferences</span>
+                                            </div>
+                                            <p class="resume-interview-help">Complete any additional fields below. Required fields are marked with an asterisk.</p>
+                                            <div class="resume-interview-additional-inputs">
+                                                @{
+                                                    var additionalViewData = new ViewDataDictionary(ViewData);
+                                                    additionalViewData.TemplateInfo.HtmlFieldPrefix = $"attributes_{Model.Id}";
+                                                    @await Html.PartialAsync("_ProductAttributes", additionalModel, additionalViewData)
+                                                }
+                                            </div>
+                                        </section>
+                                    }
+
+                                    <div class="message-error resume-interview-start-error aiinterview-hidden" data-interview-start-error="true" role="alert" aria-live="polite"></div>
+
+                                    <div class="job-ai-actions">
+                                        <button type="submit" class="button-1" data-interview-start-submit="true">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                                    </div>
+                                    <p class="job-ai-note job-ai-credit-notice">
+                                        @T("Plugins.Misc.AIInterview.Interview.StartCreditNotice")
+                                    </p>
+                                    <div class="resume-interview-start-progress aiinterview-hidden" data-interview-start-progress="true" role="status" aria-live="polite" style="min-height: 48px; margin-top: 12px;">
+                                        <div data-interview-start-progress-message="true"></div>
+                                        <strong data-interview-start-progress-elapsed="true">00:00</strong>
+                                    </div>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script asp-location="Footer">
+    (() => {
+        const form = document.querySelector('.resume-interview-start-form');
+        if (!form)
+            return;
+
+        const button = form.querySelector('[data-interview-start-submit="true"]');
+        const errorContainer = form.querySelector('[data-interview-start-error="true"]');
+        const progressContainer = form.querySelector('[data-interview-start-progress="true"]');
+        const progressMessage = form.querySelector('[data-interview-start-progress-message="true"]');
+        const progressElapsed = form.querySelector('[data-interview-start-progress-elapsed="true"]');
+        const safeRequestError = 'Unable to start the interview. Please try again.';
+        const originalButtonText = button?.textContent || 'Start Interview';
+        let progressTimer = null;
+        let progressStartedAt = 0;
+
+        const setBusy = (isBusy) => {
+            if (button) {
+                button.disabled = !!isBusy;
+                button.textContent = isBusy ? 'Starting interview...' : originalButtonText;
+            }
+        };
+
+        const formatElapsed = (seconds) => {
+            const minutes = Math.floor(seconds / 60);
+            const remainder = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+        };
+
+        const updateProgress = () => {
+            if (!progressContainer)
+                return;
+
+            const elapsedSeconds = Math.max(0, Math.floor((Date.now() - progressStartedAt) / 1000));
+            if (progressElapsed)
+                progressElapsed.textContent = formatElapsed(elapsedSeconds);
+            if (progressMessage) {
+                progressMessage.textContent = elapsedSeconds >= 25
+                    ? 'This is taking a little longer than usual. Please keep this page open.'
+                    : elapsedSeconds >= 8
+                        ? 'Your resume is ready. We are preparing your interview questions...'
+                        : 'Uploading your resume and preparing your interview...';
+            }
+        };
+
+        const startProgress = () => {
+            progressStartedAt = Date.now();
+            progressContainer?.classList.remove('aiinterview-hidden');
+            updateProgress();
+            progressTimer = window.setInterval(updateProgress, 1000);
+        };
+
+        const stopProgress = () => {
+            if (progressTimer)
+                window.clearInterval(progressTimer);
+            progressTimer = null;
+            progressContainer?.classList.add('aiinterview-hidden');
+        };
+
+        const showError = (message) => {
+            if (!errorContainer)
+                return;
+
+            errorContainer.textContent = message || safeRequestError;
+            errorContainer.classList.remove('aiinterview-hidden');
+        };
+
+        const clearError = () => {
+            if (!errorContainer)
+                return;
+
+            errorContainer.textContent = '';
+            errorContainer.classList.add('aiinterview-hidden');
+        };
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (button?.disabled)
+                return;
+
+            clearError();
+            setBusy(true);
+            startProgress();
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const contentType = response.headers.get('content-type') || '';
+                let result = null;
+                if (contentType.includes('application/json')) {
+                    try {
+                        result = await response.json();
+                    } catch {
+                    }
+                }
+
+                if (!response.ok) {
+                    showError(result?.error || result?.message || safeRequestError);
+                    return;
+                }
+
+                if (!contentType.includes('application/json')) {
+                    let responseText = '';
+                    try {
+                        responseText = (await response.text()).trim();
+                    } catch {
+                    }
+
+                    showError(responseText || safeRequestError);
+                    return;
+                }
+
+                if (!result) {
+                    showError(safeRequestError);
+                    return;
+                }
+
+                if (result?.runtimeUrl) {
+                    window.location.href = result.runtimeUrl;
+                    return;
+                }
+
+                showError(result?.error || result?.message || safeRequestError);
+            } catch {
+                showError(safeRequestError);
+            } finally {
+                if (!window.location.href.includes('/mockaiinterview/runtime')) {
+                    stopProgress();
+                    setBusy(false);
+                }
+            }
+        });
+    })();
+</script>

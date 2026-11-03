@@ -1,0 +1,197 @@
+@model Nop.Plugin.Misc.AIInterview.Models.FeedbackReportSearchModel
+@using Nop.Plugin.Misc.AIInterview
+@using Nop.Plugin.Misc.AIInterview.Models
+@using Nop.Web.Framework.Models.DataTables
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Title").Text;
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-admin.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-plugin-admin-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-admin-feedback-reports-page");
+    NopHtml.SetActiveMenuItemSystemName(AIInterviewDefaults.AdminFeedbackReportsMenuSystemName);
+}
+
+<div class="content-header clearfix aiinterview-admin-header">
+    <div class="float-left">
+        <h1>@T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Title")</h1>
+        <div class="aiinterview-admin-subtitle">@T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Search")</div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid aiinterview-admin-shell">
+        <div class="card card-default card-search aiinterview-admin-card aiinterview-admin-search-card">
+            <div class="card-body">
+                <div class="search-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="CandidateKeyword" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="CandidateKeyword" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="Issue" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-select asp-for="Issue" asp-items="Model.AvailableIssues" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="Helpfulness" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-select asp-for="Helpfulness" asp-items="Model.AvailableHelpfulnessOptions" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="SubmittedFrom" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="SubmittedFrom" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="SubmittedTo" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-editor asp-for="SubmittedTo" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-md-4">
+                                    <nop-label asp-for="HasAttachment" />
+                                </div>
+                                <div class="col-md-8">
+                                    <nop-select asp-for="HasAttachment" asp-items="Model.AvailableHasAttachmentOptions" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="text-center col-12">
+                            <button type="button" id="search-feedback-reports" class="btn btn-primary btn-search aiinterview-admin-action-button" aria-label="@T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Search")" title="@T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Search")">
+                                <i class="fas fa-magnifying-glass"></i>
+                                @T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Search")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-default aiinterview-admin-card">
+            <div class="card-body">
+                @await Html.PartialAsync("Table", new DataTablesModel
+                {
+                    Name = "feedback-reports-grid",
+                    UrlRead = new DataUrl(Url.RouteUrl(AIInterviewDefaults.AdminFeedbackReportsListRouteName)),
+                    SearchButtonId = "search-feedback-reports",
+                    Length = Model.PageSize,
+                    LengthMenu = Model.AvailablePageSizes,
+                    Filters = new List<FilterParameter>
+                    {
+                        new FilterParameter(nameof(Model.CandidateKeyword)),
+                        new FilterParameter(nameof(Model.Issue)),
+                        new FilterParameter(nameof(Model.Helpfulness)),
+                        new FilterParameter(nameof(Model.SubmittedFrom)),
+                        new FilterParameter(nameof(Model.SubmittedTo)),
+                        new FilterParameter(nameof(Model.HasAttachment))
+                    },
+                    ColumnCollection = new List<ColumnProperty>
+                    {
+                        new ColumnProperty(nameof(FeedbackReportRowModel.Submitted))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Submitted").Text
+                        },
+                        new ColumnProperty(nameof(FeedbackReportRowModel.CandidateName))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Candidate").Text,
+                            Render = new RenderCustom("renderFeedbackCandidate")
+                        },
+                        new ColumnProperty(nameof(FeedbackReportRowModel.CandidateEmail))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.CandidateEmail").Text
+                        },
+                        new ColumnProperty(nameof(FeedbackReportRowModel.Issue))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Issue").Text
+                        },
+                        new ColumnProperty(nameof(FeedbackReportRowModel.Helpfulness))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Helpfulness").Text
+                        },
+                        new ColumnProperty(nameof(FeedbackReportRowModel.CommentPreview))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Comment").Text
+                        },
+                        new ColumnProperty(nameof(FeedbackReportRowModel.Attachment))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Attachment").Text
+                        },
+                        new ColumnProperty(nameof(FeedbackReportRowModel.SessionId))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.SessionId").Text
+                        },
+                        new ColumnProperty(nameof(FeedbackReportRowModel.DetailsUrl))
+                        {
+                            Title = T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Details").Text,
+                            Width = "120",
+                            ClassName = NopColumnClassDefaults.Button,
+                            Render = new RenderCustom("renderFeedbackDetails")
+                        }
+                    }
+                })
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    function feedbackEncodeHtml(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderFeedbackCandidate(data, type, row) {
+        if (type !== 'display') {
+            return data;
+        }
+
+        if (!row.CandidateAdminUrl) {
+            return feedbackEncodeHtml(row.CandidateName || '');
+        }
+
+        return '<a href="' + feedbackEncodeHtml(row.CandidateAdminUrl) + '">' + feedbackEncodeHtml(row.CandidateName || '') + '</a>';
+    }
+
+    function renderFeedbackDetails(data, type, row) {
+        if (type !== 'display') {
+            return data;
+        }
+
+        if (!row.DetailsUrl) {
+            return '';
+        }
+
+        return '<a class="btn btn-default aiinterview-admin-link-button" href="' + feedbackEncodeHtml(row.DetailsUrl) + '" title="@T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Details").Text" aria-label="@T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Details").Text">@T("Plugins.Misc.AIInterview.Admin.FeedbackReports.Details").Text</a>';
+    }
+</script>

@@ -1,0 +1,168 @@
+@model Nop.Plugin.Misc.AIInterview.Models.AIInterviewJobProductCardModel
+
+@using Nop.Core.Domain.Catalog
+@using Nop.Web.Framework.UI
+
+@{
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendScriptParts(ResourceLocation.Footer, "~/Plugins/Misc.AIInterview/Content/js/aiinterview-job-card.js");
+
+    var productUrl = !string.IsNullOrWhiteSpace(Model.ProductUrl) ? Model.ProductUrl : Url.RouteUrl("Product", new { SeName = Model.SeName }) ?? string.Empty;
+    var saveToggleUrl = Url.Action("ToggleSavedJob", "AIInterview");
+    var drawerContentUrl = Url.Action("JobDetailsDrawer", "AIInterview", new { productId = Model.Id });
+    var drawerId = $"ai-job-preview-{Model.Id}";
+    var saveLabel = T("Plugins.Misc.AIInterview.JobCard.SaveJob").Text;
+    var removeSavedLabel = T("Plugins.Misc.AIInterview.JobCard.RemoveSavedJob").Text;
+    var viewJobText = T("Plugins.Misc.AIInterview.JobCard.ViewJob").Text;
+    var viewText = T("Plugins.Misc.AIInterview.JobCard.View").Text;
+    var previewText = T("Plugins.Misc.AIInterview.JobCard.JobPreview").Text;
+    var closePreviewText = T("Plugins.Misc.AIInterview.JobCard.CloseJobPreview").Text;
+    var loadingJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.LoadingJobDetails").Text;
+    var unableToLoadJobDetailsText = T("Plugins.Misc.AIInterview.JobCard.UnableToLoadJobDetails").Text;
+    var viewJobLinkText = T("Plugins.Misc.AIInterview.JobCard.ViewJob").Text;
+    var workArrangementLabel = T("Plugins.Misc.AIInterview.JobCard.WorkArrangement").Text;
+    var employmentTypeLabel = T("Plugins.Misc.AIInterview.JobCard.EmploymentType").Text;
+    var jobLocationLabel = T("Plugins.Misc.AIInterview.JobCard.JobLocation").Text;
+    var salaryRangeText = T("Plugins.Misc.AIInterview.JobCard.SalaryRange").Text;
+    var experienceLevelLabel = T("Plugins.Misc.AIInterview.JobCard.ExperienceLevel").Text;
+    var showSummary = !string.IsNullOrWhiteSpace(Model.Summary) &&
+        !string.Equals(Model.Summary.Trim(), Model.JobTitle?.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    string BuildAccessibleSpecText(string label, string value) => $"{label}: {value}";
+}
+
+<article class="product-item ai-job-product-card" data-productid="@Model.Id">
+    <div class="ai-job-card-header">
+        <figure class="ai-job-card-media">
+            @if (Model.UseImagePlaceholder)
+            {
+                <div class="ai-job-card-logo ai-job-card-logo-placeholder" aria-label="@Model.ImageAlt" title="@Model.ImageAlt">
+                    <span>@Model.ImagePlaceholderText</span>
+                </div>
+            }
+            else
+            {
+                <img class="ai-job-card-logo" src="@Model.ImageUrl" alt="@Model.ImageAlt" loading="lazy" />
+            }
+        </figure>
+        <div class="ai-job-card-identity">
+            <a class="ai-job-card-title-link"
+               href="@productUrl"
+               data-ai-job-preview-open="@drawerId"
+               aria-controls="@drawerId"
+               aria-expanded="false"
+               aria-label="@($"{Model.JobTitle} - {previewText}")"
+               title="@Model.JobTitle">
+                @Model.JobTitle
+            </a>
+            @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
+            {
+                <div class="ai-job-card-company" title="@Model.CompanyName">@Model.CompanyName</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.PostedLabel))
+            {
+                <span class="ai-job-card-posted-badge@(Model.IsStaleJob ? " ai-job-card-posted-badge-stale" : Model.IsAgingJob ? " ai-job-card-posted-badge-aging" : string.Empty)">@Model.PostedLabel</span>
+            }
+        </div>
+        @if (Model.CanSaveJob)
+        {
+            <button type="button"
+                    class="ai-job-card-save @(Model.IsSavedJob ? "is-saved" : null)"
+                    data-product-id="@Model.Id"
+                    data-toggle-url="@saveToggleUrl"
+                    data-wishlist-item-id="@Model.WishlistItemId"
+                    data-is-saved="@Model.IsSavedJob.ToString().ToLowerInvariant()"
+                    data-save-label="@saveLabel"
+                    data-remove-label="@removeSavedLabel"
+                    data-saved-text="@T("Plugins.Misc.AIInterview.JobCard.SavedToSavedJobs")"
+                    data-removed-text="@T("Plugins.Misc.AIInterview.JobCard.RemovedFromSavedJobs")"
+                    aria-pressed="@Model.IsSavedJob.ToString().ToLowerInvariant()"
+                    aria-label="@(Model.IsSavedJob ? removeSavedLabel : saveLabel)"
+                    title="@(Model.IsSavedJob ? removeSavedLabel : saveLabel)">
+                <i class="fa-regular fa-bookmark ai-job-card-save-icon ai-job-card-save-icon-outline" aria-hidden="true"></i>
+                <i class="fa-solid fa-bookmark ai-job-card-save-icon ai-job-card-save-icon-filled" aria-hidden="true"></i>
+                <span class="ai-job-card-visually-hidden">@(Model.IsSavedJob ? removeSavedLabel : saveLabel)</span>
+            </button>
+        }
+    </div>
+
+    <div class="ai-job-card-body ai-job-card-content">
+        @if (showSummary)
+        {
+            <div class="ai-job-card-summary" title="@Model.Summary">@Model.Summary</div>
+        }
+
+        <div class="ai-job-card-meta">
+            @if (!string.IsNullOrWhiteSpace(Model.Specifications.WorkArrangement))
+            {
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(workArrangementLabel, Model.Specifications.WorkArrangement)" aria-label="@BuildAccessibleSpecText(workArrangementLabel, Model.Specifications.WorkArrangement)">
+                    <i class="fa-solid fa-briefcase ai-job-card-spec-icon" aria-hidden="true"></i>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.WorkArrangement</span>
+                </span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Specifications.EmploymentType))
+            {
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(employmentTypeLabel, Model.Specifications.EmploymentType)" aria-label="@BuildAccessibleSpecText(employmentTypeLabel, Model.Specifications.EmploymentType)">
+                    <i class="fa-solid fa-id-card ai-job-card-spec-icon" aria-hidden="true"></i>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.EmploymentType</span>
+                </span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
+            {
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)" aria-label="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)">
+                    <i class="fa-solid fa-location-dot ai-job-card-spec-icon" aria-hidden="true"></i>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.JobLocation</span>
+                </span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Specifications.ExperienceLevel))
+            {
+                <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(experienceLevelLabel, Model.Specifications.ExperienceLevel)" aria-label="@BuildAccessibleSpecText(experienceLevelLabel, Model.Specifications.ExperienceLevel)">
+                    <i class="fa-solid fa-chart-line ai-job-card-spec-icon" aria-hidden="true"></i>
+                    <span class="ai-job-card-spec-value">@Model.Specifications.ExperienceLevel</span>
+                </span>
+            }
+        </div>
+
+        <div class="ai-job-card-actions">
+            @if (!string.IsNullOrWhiteSpace(Model.Specifications.SalaryRange))
+            {
+                <span class="ai-job-card-salary"
+                      title="@BuildAccessibleSpecText(salaryRangeText, Model.Specifications.SalaryRange)"
+                      aria-label="@BuildAccessibleSpecText(salaryRangeText, Model.Specifications.SalaryRange)">
+                    <i class="fa-solid fa-wallet ai-job-card-spec-icon" aria-hidden="true"></i>
+                    <span class="ai-job-card-salary-value">@Model.Specifications.SalaryRange</span>
+                </span>
+            }
+            <a class="ai-job-card-view-job" href="@productUrl" title="@viewJobText" aria-label="@viewJobText">
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                <span>@viewText</span>
+            </a>
+        </div>
+
+        <span class="ai-job-card-status ai-job-card-visually-hidden" aria-live="polite" data-ai-job-save-status="@Model.Id"></span>
+    </div>
+
+    <div class="ai-job-preview-drawer"
+         id="@drawerId"
+         aria-hidden="true"
+         data-drawer-url="@drawerContentUrl"
+         data-product-url="@productUrl"
+         data-product-link-text="@viewJobLinkText"
+         data-loading-text="@loadingJobDetailsText"
+         data-error-text="@unableToLoadJobDetailsText">
+        <div class="ai-job-preview-drawer-backdrop" data-ai-job-preview-close="true"></div>
+        <div class="ai-job-preview-drawer-panel" role="dialog" aria-modal="true" aria-label="@Model.JobTitle" tabindex="-1">
+            <div class="ai-job-preview-drawer-toolbar">
+                <div class="ai-job-preview-drawer-toolbar-copy">
+                    <span class="ai-job-card-kicker">@previewText</span>
+                </div>
+                <button type="button" class="ai-job-preview-drawer-close" data-ai-job-preview-close="true" aria-label="@closePreviewText" title="@closePreviewText">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="ai-job-preview-drawer-body" data-ai-job-drawer-body="true">
+                <div class="ai-job-preview-loading">@loadingJobDetailsText</div>
+            </div>
+        </div>
+    </div>
+</article>

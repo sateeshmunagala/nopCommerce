@@ -1,0 +1,32 @@
+@model Nop.Plugin.Misc.AIInterview.Models.InterviewReportModel
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-mock-report-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyActivityNavigationTab })
+}
+
+<div class="page mock-report">
+    <div class="page-title">
+        <div class="ai-report-page-head">
+            <h1>Practice Report</h1>
+            <button type="button"
+                    class="button-2 ai-report-back-button"
+                    onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href='@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)'; }">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                <span>@T("Plugins.Misc.AIInterview.Report.Back")</span>
+            </button>
+        </div>
+    </div>
+    <div class="page-body">
+        <div class="mock-report-wrap">
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InterviewReportContent.cshtml", Model)
+        </div>
+    </div>
+</div>

@@ -1,0 +1,40 @@
+@{
+    Layout = "_ColumnsOne";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Index.Title").Text);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-public-page");
+}
+
+<div class="page custom-page aiinterview-public-page aiinterview-index-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Index.Title")</h1>
+    </div>
+    <div class="page-body">
+        <section class="aiinterview-index-hero aiinterview-card">
+            <div class="aiinterview-index-copy">
+                <p class="aiinterview-index-lead">@T("Plugins.Misc.AIInterview.Index.Welcome")</p>
+            </div>
+            <div class="buttons aiinterview-index-actions">
+                <a class="button-1" href="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)" title="@T("Plugins.Misc.AIInterview.Index.StartInterview")">
+                    @T("Plugins.Misc.AIInterview.Index.StartInterview")
+                </a>
+                <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MyApplicationsRouteName)" title="@T("Plugins.Misc.AIInterview.MyApplications.Title")">
+                    @T("Plugins.Misc.AIInterview.MyApplications.Title")
+                </a>
+                <a class="button-2" href="@Url.RouteUrl(AIInterviewDefaults.MockHistoryRouteName)" title="@T("Plugins.Misc.AIInterview.Index.ViewHistory")">
+                    @T("Plugins.Misc.AIInterview.Index.ViewHistory")
+                </a>
+            </div>
+        </section>
+        <div class="aiinterview-index-summary">
+            <div class="aiinterview-index-summary-item">
+                <strong>@T("Plugins.Misc.AIInterview.Index.StartInterview")</strong>
+                <span>@T("Plugins.Misc.AIInterview.Index.Title")</span>
+            </div>
+            <div class="aiinterview-index-summary-item">
+                <strong>@T("Plugins.Misc.AIInterview.MyApplications.Title")</strong>
+                <span>@T("Plugins.Misc.AIInterview.Index.Welcome")</span>
+            </div>
+        </div>
+    </div>
+</div>

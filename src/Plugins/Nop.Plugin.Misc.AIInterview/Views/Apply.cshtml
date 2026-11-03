@@ -1,0 +1,57 @@
+@model ApplyModel
+
+@{
+    Layout = "_ColumnsOne";
+
+    //title
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Apply.Title").Text);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-public-page");
+}
+
+<div class="page apply-job-page aiinterview-public-page">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Apply.Title")</h1>
+    </div>
+    <div class="page-body">
+        <form asp-route="Plugin.Misc.AIInterview.Apply" method="post" enctype="multipart/form-data">
+            <input type="hidden" asp-for="ProductId" />
+            <div asp-validation-summary="ModelOnly" class="message-error"></div>
+            <div class="fieldset">
+                <div class="form-fields">
+                    @if (Model.ResumeRequired)
+                    {
+                        <div class="job-inline-message is-visible is-info">
+                            @T("Plugins.Misc.AIInterview.Apply.ResumeRequired")
+                        </div>
+                    }
+                    <div class="inputs">
+                        <label asp-for="JobTitle" asp-postfix=":"></label>
+                        <input asp-for="JobTitle" class="job-title" />
+                        <nop-required />
+                        <span asp-validation-for="JobTitle"></span>
+                    </div>
+                    <div class="inputs">
+                        <label asp-for="ResumeFile" asp-postfix=":"></label>
+                        <input asp-for="ResumeFile" type="file" accept=".pdf,.docx" class="resume-file" />
+                        <span class="field-validation-valid">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</span>
+                        <span asp-validation-for="ResumeFile"></span>
+                    </div>
+                    @if (Model.AvailableResumes.Any())
+                    {
+                        <div class="inputs">
+                            <label asp-for="SelectedResumeDownloadId" asp-postfix=":"></label>
+                            <select asp-for="SelectedResumeDownloadId" asp-items="Model.AvailableResumes">
+                                <option value="0">@T("Plugins.Misc.AIInterview.Apply.PreviousResume.Placeholder")</option>
+                            </select>
+                            <span asp-validation-for="SelectedResumeDownloadId"></span>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="buttons">
+                <button type="submit" name="apply-job" class="button-1 apply-job-button">@T("Plugins.Misc.AIInterview.Apply.Submit")</button>
+            </div>
+        </form>
+    </div>
+</div>

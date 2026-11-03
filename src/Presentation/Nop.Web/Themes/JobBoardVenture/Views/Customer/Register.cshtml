@@ -1,0 +1,434 @@
+@model RegisterModel
+
+@{
+    Layout = "_ColumnsOne";
+
+    //title
+    NopHtml.AddTitleParts(T("PageTitle.Register").Text);
+    //page class
+    NopHtml.AppendPageCssClassParts("html-registration-page");
+
+    var loginUrl = Url.RouteUrl(NopRouteNames.General.LOGIN, new { returnUrl = Context.Request.Query["ReturnUrl"] });
+    var registerUrl = Url.RouteUrl(NopRouteNames.Standard.REGISTER, new { returnUrl = Context.Request.Query["ReturnUrl"] });
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/css/intlTelInput.css" />
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/intlTelInput.min.js"></script>
+<style>
+    .html-registration-page .registration-page .iti {
+        position: relative;
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .html-registration-page .registration-page .iti__tel-input {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        min-width: 0;
+        min-height: 44px;
+        height: 44px;
+    }
+
+    .html-registration-page .registration-page .iti.iti--separate-dial-code .iti__tel-input {
+        padding-left: 96px;
+    }
+
+    .html-registration-page .registration-page .iti__country-container {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        display: flex;
+        width: auto;
+        height: 100%;
+        align-items: stretch;
+    }
+
+    .html-registration-page .registration-page .iti__selected-country {
+        box-sizing: border-box;
+        display: flex;
+        width: auto;
+        min-width: 0;
+        height: 100%;
+        margin: 0;
+        border: 0;
+        padding: 0 8px;
+        flex-direction: row;
+        align-items: center;
+        background: transparent;
+    }
+
+    .html-registration-page .registration-page .iti__selected-country-primary {
+        display: flex;
+        align-items: center;
+    }
+
+    .html-registration-page .registration-page .iti__selected-dial-code {
+        display: flex;
+        align-items: center;
+        margin-left: 4px;
+        color: gray;
+        font-size: 14px;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .html-registration-page .iti__dropdown-content {
+        box-sizing: border-box;
+        min-width: min(280px, calc(100vw - 24px));
+        max-width: calc(100vw - 24px);
+        background: #fff;
+        color: #30363c;
+        font-size: 14px;
+        line-height: 1.4;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .html-registration-page .iti__hide {
+        display: none;
+    }
+
+    .html-registration-page .iti__country-list {
+        display: block;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow-y: auto;
+        background: #fff;
+        list-style: none;
+        text-align: left;
+    }
+
+    .html-registration-page .iti__country {
+        box-sizing: border-box;
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        align-items: center;
+    }
+
+    .html-registration-page .iti__country-name,
+    .html-registration-page .iti__dial-code {
+        display: inline;
+        font-size: 14px;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+
+    .html-registration-page input[type="text"].iti__search-input {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        min-height: 32px;
+        height: 32px;
+        margin: 0;
+        border-bottom-width: 1px;
+        padding-left: 10px;
+        background: #fff;
+        color: #30363c;
+        font-size: 14px;
+        line-height: 1.2;
+        text-align: left;
+    }
+
+    .html-registration-page input[type="text"].iti__search-input::placeholder {
+        color: #626970;
+        opacity: 1;
+    }
+</style>
+
+<div class="page registration-page">
+    <div class="page-title">
+        <h1>@T("Account.Register")</h1>
+    </div>
+    <div class="page-body">
+        <div class="auth-split-container">
+            <section class="auth-left-panel" aria-labelledby="jb-auth-hero-title">
+                <div class="auth-hero-content" data-jb-auth-hero>
+                    <p class="auth-hero-eyebrow">AI-powered career journeys</p>
+                    <p class="auth-hero-title" id="jb-auth-hero-title">Make your next move with confidence.</p>
+                    <p class="auth-hero-subtitle">
+                        Find your direction with
+                        <br />
+                        <span class="auth-typing-target" id="jb-auth-phrase" data-jb-auth-phrase aria-hidden="true">Get AI-powered feedback to make your resume stand out to recruiters.</span><span class="auth-typing-cursor" aria-hidden="true"></span>
+                        <span class="jb-auth-live-region" data-jb-auth-announcement aria-live="polite" aria-atomic="true">Get AI-powered feedback to make your resume stand out to recruiters.</span>
+                    </p>
+                    <ol class="auth-indicators" aria-label="Career journey highlights">
+                        <li><button type="button" class="auth-indicator is-active" data-jb-auth-phrase-index="0" aria-label="Show AI-powered resume feedback message" aria-controls="jb-auth-phrase" aria-pressed="true"></button></li>
+                        <li><button type="button" class="auth-indicator" data-jb-auth-phrase-index="1" aria-label="Show skills-aligned opportunities message" aria-controls="jb-auth-phrase" aria-pressed="false"></button></li>
+                    </ol>
+                </div>
+            </section>
+            <section class="auth-right-panel">
+                <nav class="auth-tabs" role="tablist" aria-label="Account access">
+                    <a class="auth-tab" id="jb-auth-login-tab" href="@loginUrl" role="tab" tabindex="0" data-jb-auth-tab aria-selected="false" aria-controls="jb-auth-content-panel">@T("Account.Login")</a>
+                    <a class="auth-tab is-active" id="jb-auth-register-tab" href="@registerUrl" role="tab" tabindex="0" data-jb-auth-tab aria-selected="true" aria-current="page" aria-controls="jb-auth-content-panel">@T("Account.Register")</a>
+                </nav>
+                <div class="auth-panel-content" id="jb-auth-content-panel" role="tabpanel" aria-labelledby="jb-auth-register-tab">
+                    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.RegisterTop, additionalData = Model })
+                    <form asp-route="@NopRouteNames.Standard.REGISTER" asp-route-returnurl="@Context.Request.Query["ReturnUrl"]" method="post" autocomplete="off">
+            <div asp-validation-summary="ModelOnly" class="message-error"></div>
+            <section class="fieldset">
+                @* <h2 class="title">
+                    @T("Account.YourPersonalDetails")
+                </h2> *@
+                <div class="form-fields">
+                    @if (Model.FirstNameEnabled || Model.LastNameEnabled)
+                    {
+                        <div class="jb-auth-name-row">
+                            @if (Model.FirstNameEnabled)
+                            {
+                                <div class="inputs">
+                                    <div class="jb-auth-field-label">
+                                        <label class="jb-register-field-label" for="@Html.IdFor(m => m.FirstName)">@T("Account.Fields.FirstName"):</label>
+                                        @if (Model.FirstNameRequired)
+                                        {
+                                            <nop-required />
+                                        }
+                                    </div>
+                                    <input asp-for="FirstName" placeholder="@T("Account.Fields.FirstName")" autofocus="autofocus" />
+                                    <span asp-validation-for="FirstName"></span>
+                                </div>
+                            }
+                            @if (Model.LastNameEnabled)
+                            {
+                                <div class="inputs">
+                                    <div class="jb-auth-field-label">
+                                        <label class="jb-register-field-label" for="@Html.IdFor(m => m.LastName)">@T("Account.Fields.LastName"):</label>
+                                        @if (Model.LastNameRequired)
+                                        {
+                                            <nop-required />
+                                        }
+                                    </div>
+                                    <input asp-for="LastName" placeholder="@T("Account.Fields.LastName")" autofocus="@(!Model.FirstNameEnabled)" />
+                                    <span asp-validation-for="LastName"></span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    <div class="inputs">
+                        <div class="jb-auth-field-label">
+                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.Email)">@T("Account.Fields.Email"):</label>
+                            <nop-required />
+                        </div>
+                        <input asp-for="Email" placeholder="@T("Account.Fields.Email")" autofocus="@(!Model.FirstNameEnabled && !Model.LastNameEnabled)" />
+                        <span asp-validation-for="Email"></span>
+                    </div>
+                    @if (Model.EnteringEmailTwice)
+                    {
+                        <div class="inputs">
+                            <div class="jb-auth-field-label">
+                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.ConfirmEmail)">@T("Account.Fields.ConfirmEmail"):</label>
+                                <nop-required />
+                            </div>
+                            <input asp-for="ConfirmEmail" placeholder="@T("Account.Fields.ConfirmEmail")" />
+                            <span asp-validation-for="ConfirmEmail"></span>
+                        </div>
+                    }
+                    @if (Model.UsernamesEnabled)
+                    {
+                        <div class="inputs">
+                            <div class="jb-auth-field-label">
+                                <label class="jb-register-field-label" for="@Html.IdFor(m => m.Username)">@T("Account.Fields.Username"):</label>
+                                <nop-required />
+                            </div>
+                            <input asp-for="Username" placeholder="@T("Account.Fields.Username")" />
+                            <span asp-validation-for="Username"></span>
+                            @if (Model.CheckUsernameAvailabilityEnabled)
+                            {
+                                @await Html.PartialAsync("_CheckUsernameAvailability")
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+            @if (Model.PhoneEnabled)
+            {
+                <section class="fieldset">
+                   @*  <h2 class="title">
+                        @T("Account.YourContactInformation")
+                    </h2> *@
+                    <div class="form-fields">
+                        @if (Model.PhoneEnabled)
+                        {
+                            <div class="inputs">
+                                <div class="jb-auth-field-label">
+                                    <label class="jb-register-field-label" for="@Html.IdFor(m => m.Phone)">@T("Account.Fields.Phone"):</label>
+                                    @if (Model.PhoneRequired)
+                                    {
+                                        <nop-required />
+                                    }
+                                </div>
+                                <input asp-for="Phone" type="tel" placeholder="@T("PhoneVerification.Placeholder")" />
+                                <span asp-validation-for="Phone"></span>
+                                
+                            </div>
+                            @if (Model.LoginByPhoneEnabled)
+                            {
+                                <span class="phone-info" style="color: var(--gray-color);">@T("Account.Register.OtpRegisterSmsText")</span>
+                            }
+                        }
+                    </div>
+                </section>
+            }
+            <section class="fieldset">
+               @*  <h2 class="title">
+                    @T("Account.YourPassword")
+                </h2> *@
+                <div class="form-fields">
+                    <div class="inputs">
+                        <div class="jb-auth-field-label">
+                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.Password)">@T("Account.Fields.Password"):</label>
+                            <nop-required />
+                        </div>
+                        <input asp-for="Password" placeholder="@T("Account.Fields.Password")" />
+                        <span asp-validation-for="Password"></span>
+                    </div>
+                    <div class="inputs">
+                        <div class="jb-auth-field-label">
+                            <label class="jb-register-field-label" for="@Html.IdFor(m => m.ConfirmPassword)">@T("Account.Fields.ConfirmPassword"):</label>
+                            <nop-required />
+                        </div>
+                        <input asp-for="ConfirmPassword" placeholder="@T("Account.Fields.ConfirmPassword")" />
+                        <span asp-validation-for="ConfirmPassword"></span>
+                    </div>
+                    @if (Model.DisplayCaptcha)
+                    {
+                        <nop-captcha />
+                    }
+                    @if (Model.HoneypotEnabled)
+                    {
+                        @Html.Raw(Html.GenerateHoneypotInput())
+                    }
+                </div>
+            </section>
+
+            @if (Model.AcceptPrivacyPolicyEnabled || Model.GdprConsents.Count > 0)
+            {
+                <section class="fieldset">
+                   @*  <h2 class="title">
+                        @T("Account.UserAgreement")
+                    </h2> *@
+                    <div class="form-fields">
+                        @if (Model.AcceptPrivacyPolicyEnabled)
+                        {
+                            <script asp-location="Footer">
+                                $(function() {
+                                    $('#register-button').on('click', function() {
+                                        if ($('#accept-consent').is(':checked')) {
+                                            //do some stuff
+                                            return true;
+                                        } else {
+                                            //just show validation errors, don't post
+                                            alert('@Html.Raw(JavaScriptEncoder.Default.Encode(T("Account.Fields.AcceptPrivacyPolicy.Required").Text))');
+                                            return false;
+                                        }
+                                    });
+                                });
+                            </script>
+                            <div class="inputs accept-consent">
+                                <input id="accept-consent" type="checkbox" name="accept-consent" />
+                                <label for="accept-consent">@T("Account.Fields.AcceptPrivacyPolicy")</label>
+                                @if (Model.AcceptPrivacyPolicyPopup)
+                                {
+                                    <span class="read" id="read-privacyinfo">@T("Account.Fields.AcceptPrivacyPolicy.Read")</span>
+                                    <script asp-location="Footer">
+                                    $(function() {
+                                        $('#read-privacyinfo').on('click',
+                                            function(e) {
+                                                displayPopupContentFromUrl(
+                                                        '@Url.RouteUrl(NopRouteNames.Ajax.TOPIC_POPUP, new { SystemName = "privacyinfo" })',
+                                                    '@T("Account.Fields.AcceptPrivacyPolicy")');
+                                            });
+                                    });
+                                    </script>
+                                }
+                                else
+                                {
+                                    <a class="read" id="read-privacyinfo" href="@await NopUrl.RouteTopicUrlAsync("privacyinfo")">@T("Account.Fields.AcceptPrivacyPolicy.Read")</a>
+                                }
+                            </div>
+                        }
+
+                        @if (Model.GdprConsents.Count > 0)
+                        {
+                            foreach (var consent in Model.GdprConsents)
+                            {
+                                if (consent.IsRequired)
+                                {
+                                    <script asp-location="Footer">
+                                    $(function() {
+                                        $('#register-button').on('click', function() {
+                                            if ($('#consent@(consent.Id)').is(':checked')) {
+                                                    //do some stuff
+                                                    return true;
+                                                } else {
+                                                    //just show validation errors, don't post
+                                               alert('@Html.Raw(JavaScriptEncoder.Default.Encode(consent.RequiredMessage))');
+                                                    return false;
+                                                }
+                                            });
+                                    });
+                                    </script>
+                                }
+                                <div class="inputs accept-consent">
+                                    <input id="consent@(consent.Id)" type="checkbox" name="consent@(consent.Id)" checked="@consent.Accepted" />
+                                    <label for="consent@(consent.Id)">@consent.Message</label>
+                                </div>
+                            }
+
+                        }
+                    </div>
+                </section>
+            }
+
+            <section class="buttons">
+                <button type="submit" name="register-button" id="register-button" class="button-1 register-next-step-button">@T("Account.Register.Button")</button>
+            </section>
+                    </form>
+                    <div class="external-authentication">
+                        @await Component.InvokeAsync(typeof(ExternalMethodsViewComponent), "ExternalAuthentication")
+                    </div>
+                    @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.RegisterBottom, additionalData = Model })
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('@Html.IdFor(m => m.Phone)');
+        if (!input || !window.intlTelInput) {
+            return;
+        }
+
+        const phoneInput = window.intlTelInput(input, {
+            initialCountry: 'in',
+            strictMode: true,
+            countryOrder: ['in', 'us', 'ca', 'au', 'gb'],
+            preferredCountries: ['in', 'us', 'ca', 'au', 'gb'],
+            separateDialCode: true,
+            showSelectedDialCode: true,
+            nationalMode: true,
+            formatOnDisplay: false,
+            loadUtilsOnInit: 'https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/utils.js'
+        });
+
+        const form = input.closest('form');
+        if (!form) {
+            return;
+        }
+
+        form.addEventListener('submit', function () {
+            const number = phoneInput.getNumber();
+            if (number) {
+                input.value = number;
+            }
+        });
+    });
+</script>

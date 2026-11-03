@@ -1,0 +1,16 @@
+@model Nop.Plugin.Misc.AIInterview.Components.VendorPortalHeaderLinksModel
+@if (Model.ShowName)
+{
+    <li class="vp-username-item">
+        <span class="vp-username">@Model.FirstName @Model.LastName</span>
+    </li>
+}
+<li class="vp-credit-badge-item">
+    <a class="vp-credit-badge"
+       href="@Url.RouteUrl(AIInterviewDefaults.MyActivityRouteName, new { tab = AIInterviewDefaults.MyActivityCreditsTabKey })"
+       title="Credits - click to view your credit activity">
+        <i class="fa-solid fa-coins vp-coin-icon" aria-hidden="true"></i>
+        <span class="sr-only">@T("Plugins.Misc.AIInterview.MyActivity.Tab.Credits")</span>
+        <span class="vp-credit-balance">@Model.Balance.ToString("0")</span>
+    </a>
+</li>

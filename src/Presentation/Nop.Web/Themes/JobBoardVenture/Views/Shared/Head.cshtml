@@ -1,0 +1,61 @@
+@using System.Globalization
+@using Nop.Core
+@using Nop.Core.Domain.Catalog
+@using Nop.Services.Customers
+@using Nop.Services.Themes
+
+@inject CatalogSettings catalogSettings
+@inject ICustomerService customerService
+@inject IThemeContext themeContext
+@inject IWorkContext workContext
+
+@{
+    Layout ="";
+    var themeName = await themeContext.GetWorkingThemeNameAsync();
+    var supportRtl = await Html.ShouldUseRtlThemeAsync();
+    var currentCustomer = await workContext.GetCurrentCustomerAsync();
+    var isRegisteredCustomer = await customerService.IsRegisteredAsync(currentCustomer);
+    var clarityCustomerId = currentCustomer.Id.ToString(CultureInfo.InvariantCulture);
+    var clarityCustomerRole = isRegisteredCustomer ? "registered" : "guest";
+
+    //add JobBoardVenture custom CSS file (must be appended FIRST so it renders AFTER main styles due to NopHtml insertion order)
+    NopHtml.AppendCssFileParts($"~/Themes/{themeName}/Content/css/jobboard-venture.css");
+
+    //add main CSS file
+    NopHtml.AppendCssFileParts($"~/Themes/{themeName}/Content/css/styles{(supportRtl ? ".rtl" : "")}.css");
+
+    //add JobBoardVenture custom JS file
+    NopHtml.AppendScriptParts(ResourceLocation.Footer, $"~/Themes/{themeName}/Content/js/jobboard-venture.js");
+    NopHtml.AppendScriptParts(ResourceLocation.Footer, "~/lib_npm/htmx.org/dist/htmx.min.js");
+
+    //add Google Fonts
+    // Added via external link for now, per Phase 1 instructions
+    NopHtml.AppendCssFileParts("https://fonts.googleapis.com/css2?family=Fjalla+One&family=Inter:wght@400;500;600;700&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap");
+
+    //add Font Awesome
+    // Added via external link for now, per Phase 1 instructions
+    NopHtml.AppendCssFileParts("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css");
+
+    //add swiper css file
+    if (catalogSettings.DisplayAllPicturesOnCatalogPages)
+    {
+        NopHtml.AppendCssFileParts("~/lib_npm/swiper/swiper-bundle.min.css");
+    }
+
+    //add jQuery UI css file
+    NopHtml.AppendCssFileParts("~/lib_npm/jquery-ui-dist/jquery-ui.min.css");
+}
+
+<script>
+    (function (c, l, a, r, i, t, y) {
+        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+        t = l.createElement(r);
+        t.async = 1;
+        t.src = "https://www.clarity.ms/tag/" + i;
+        y = l.getElementsByTagName(r)[0];
+        y.parentNode.insertBefore(t, y);
+    })(window, document, "clarity", "script", "y4tv27kfzg");
+
+    clarity("identify", "@clarityCustomerId");
+    clarity("set", "customer_role", "@clarityCustomerRole");
+</script>

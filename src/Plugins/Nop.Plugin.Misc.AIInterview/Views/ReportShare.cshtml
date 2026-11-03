@@ -1,0 +1,14 @@
+@model Nop.Plugin.Misc.AIInterview.Models.InterviewReportModel
+
+@{
+    Layout = "_ColumnsOne";
+    NopHtml.AddTitleParts(T("Plugins.Misc.AIInterview.Report.ShareTitle").Text);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-report-page");
+}
+
+<div class="page ai-interview-report-page ai-report-share-page">
+    <div class="page-body">
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_ReportShareContent.cshtml", Model)
+    </div>
+</div>

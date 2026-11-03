@@ -1,0 +1,242 @@
+@model IList<Nop.Plugin.Misc.AIInterview.Domain.SponsorInvite>
+@using Nop.Plugin.Misc.AIInterview
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Nop.Web.Models.Customer
+
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-employer-manage-page");
+    var inviteStatuses = ViewBag.SponsorInviteStatuses as IDictionary<int, string> ?? new Dictionary<int, string>();
+    var availableProducts = ViewBag.AvailableProducts as IList<SelectListItem> ?? new List<SelectListItem>();
+    var inviteExpiryMin = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm");
+    var inviteExpiryMax = DateTime.UtcNow.AddDays(60).ToString("yyyy-MM-ddTHH:mm");
+}
+
+@section left {
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.EmployerDashboardNavigationTab })
+}
+
+<div class="page vendor-account-page employer-manage">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Employer.Invite.Title")</h1>
+    </div>
+    <div class="page-body">
+        <div class="credit-balance">
+            <strong>@T("Plugins.Misc.AIInterview.Employer.Credits.Balance"):</strong> @ViewBag.CreditBalanceDisplay
+        </div>
+
+        <div class="section create-invite">
+            <div class="title">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.CreateTitle")</strong>
+            </div>
+            <form asp-controller="MockAiInterview" asp-action="CreateInvite" method="post" class="invite-create-form">
+                <div class="fieldset">
+                    <div class="invite-fieldset">
+                    <div class="form-fields invite-form-grid">
+                        <div class="invite-field invite-field-wide">
+                            <label for="invite-email">@T("Plugins.Misc.AIInterview.Employer.Invite.Email"):</label>
+                            <textarea id="invite-email" name="email" rows="3" required class="form-control" placeholder="@T("Plugins.Misc.AIInterview.Employer.Invite.EmailPlaceholder")"></textarea>
+                            <span class="field-help-text">@T("Plugins.Misc.AIInterview.Employer.Invite.EmailHelpText")</span>
+                        </div>
+                        <div class="invite-field">
+                            <label for="productId">@T("Plugins.Misc.AIInterview.Employer.Invite.ProductId"):</label>
+                            <select id="productId" name="productId" required class="form-control">
+                                @foreach (var option in availableProducts)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="invite-field">
+                            <label for="maxAttempts">@T("Plugins.Misc.AIInterview.Employer.Invite.MaxAttempts"):</label>
+                            <input id="maxAttempts" type="number" name="maxAttempts" value="1" required class="form-control" />
+                        </div>
+                        <div class="invite-field">
+                            <label for="expiryDateUtc">@T("Plugins.Misc.AIInterview.Employer.Invite.ExpiryDate"):</label>
+                            <input id="expiryDateUtc" type="datetime-local" name="expiryDateUtc" class="form-control" min="@inviteExpiryMin" max="@inviteExpiryMax" />
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                <div class="buttons invite-actions">
+                    <button type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Employer.Invite.Create")</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="section invite-list">
+            <div class="title">
+                <strong>@T("Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle")</strong>
+            </div>
+            @if (Model.Any())
+            {
+                <div class="table-wrapper">
+                    <div class="invite-table-wrapper">
+                        <table class="data-table invite-table">
+                        <thead>
+                            <tr>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Email")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Code")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Link")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Status")</th>
+                                <th>@T("Plugins.Misc.AIInterview.Employer.Invite.Actions")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var invite in Model)
+                            {
+                                var inviteUrl = Url.RouteUrl(AIInterviewDefaults.MockStartRouteName,
+                                    new { productId = invite.ProductId, sponsorToken = invite.InviteCode });
+                                <tr>
+                                    <td>@invite.Email</td>
+                                    <td>@invite.InviteCode</td>
+                                    <td>
+                                        <button type="button"
+                                                class="button-2 ai-copy-share-link ai-icon-action employer-dashboard-action-icon"
+                                                data-share-url="@inviteUrl"
+                                                aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")"
+                                                title="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")">
+                                            <i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i>
+                                            <i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i>
+                                            <i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i>
+                                            <span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</span>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        @{
+                                            var statusKey = inviteStatuses.TryGetValue(invite.Id, out var inviteStatus) ? inviteStatus : string.Empty;
+                                            var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
+                                            var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
+                                        }
+                                        @(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)
+                                    </td>
+                                    <td>
+                                        @if (isActiveInvite)
+                                        {
+                                            <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">
+                                                <button type="submit" class="button-2 invite-deactivate-button">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="responsive-data-list invite-mobile-list" aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.ActiveTitle")">
+                    @foreach (var invite in Model)
+                    {
+                        var inviteUrl = Url.RouteUrl(AIInterviewDefaults.MockStartRouteName,
+                            new { productId = invite.ProductId, sponsorToken = invite.InviteCode });
+                        var statusKey = inviteStatuses.TryGetValue(invite.Id, out var inviteStatus) ? inviteStatus : string.Empty;
+                        var activeStatus = T("Plugins.Misc.AIInterview.Employer.Invite.Active").Text;
+                        var isActiveInvite = string.Equals(statusKey, activeStatus, StringComparison.OrdinalIgnoreCase);
+                        <article class="responsive-data-card">
+                            <div class="responsive-data-card-head">
+                                <div class="responsive-data-card-head-copy">
+                                    <strong class="responsive-data-card-title">@invite.Email</strong>
+                                    <div class="responsive-data-card-subtitle">@invite.InviteCode</div>
+                                </div>
+                                <div class="responsive-data-card-chip-group">
+                                    <span class="status-pill">@(string.IsNullOrWhiteSpace(statusKey) ? T("Plugins.Misc.AIInterview.Employer.Invite.Active") : statusKey)</span>
+                                </div>
+                            </div>
+                            <div class="responsive-data-card-grid">
+                                <div class="responsive-data-card-item responsive-data-card-item-wide">
+                                    <span class="responsive-data-card-label">@T("Plugins.Misc.AIInterview.Employer.Invite.Link")</span>
+                                    <span class="responsive-data-card-value">
+                                        <button type="button"
+                                                class="button-2 ai-copy-share-link ai-icon-action"
+                                                data-share-url="@inviteUrl"
+                                                aria-label="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")"
+                                                title="@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")">
+                                            <i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i>
+                                            <i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i>
+                                            <i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i>
+                                            <span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Invite.CopyLink")</span>
+                                        </button>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="responsive-data-card-actions">
+                                @if (isActiveInvite)
+                                {
+                                    <form asp-controller="MockAiInterview" asp-action="DeactivateInvite" asp-route-id="@invite.Id" method="post" class="invite-deactivate-form">
+                                        <button type="submit" class="button-2 invite-deactivate-button">@T("Plugins.Misc.AIInterview.Employer.Invite.Deactivate")</button>
+                                    </form>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+            else
+            {
+                <p>@T("Plugins.Misc.AIInterview.Employer.Invite.NoInvites")</p>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    if (window.__aiInterviewInviteCopyLinkInitialized) {
+        return;
+    }
+    window.__aiInterviewInviteCopyLinkInitialized = true;
+
+    const writeToClipboard = async (text) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = text;
+        input.setAttribute('readonly', 'readonly');
+        input.style.position = 'absolute';
+        input.style.left = '-9999px';
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(input);
+        return copied;
+    };
+
+    document.addEventListener('click', async (event) => {
+        const shareCopyButton = event.target.closest('.ai-copy-share-link');
+        if (!shareCopyButton) {
+            return;
+        }
+
+        event.preventDefault();
+        const shareUrl = shareCopyButton.getAttribute('data-share-url');
+        if (!shareUrl) {
+            return;
+        }
+
+        try {
+            await writeToClipboard(shareUrl);
+            const feedbackRoot = shareCopyButton.closest('.ai-report-share-layout');
+            const copiedText = feedbackRoot?.dataset.copiedText || 'Copied';
+            shareCopyButton.classList.remove('is-error');
+            shareCopyButton.classList.add('is-success');
+            shareCopyButton.setAttribute('title', copiedText);
+            shareCopyButton.setAttribute('aria-label', copiedText);
+        } catch (error) {
+            const feedbackRoot = shareCopyButton.closest('.ai-report-share-layout');
+            const copyFailedText = feedbackRoot?.dataset.copyFailedText || 'Copy failed';
+            shareCopyButton.classList.remove('is-success');
+            shareCopyButton.classList.add('is-error');
+            shareCopyButton.setAttribute('title', copyFailedText);
+            shareCopyButton.setAttribute('aria-label', copyFailedText);
+        }
+    });
+})();
+</script>

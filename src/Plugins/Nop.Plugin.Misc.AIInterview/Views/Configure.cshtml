@@ -1,0 +1,46 @@
+@model Nop.Plugin.Misc.AIInterview.Models.ConfigurationModel
+@using Nop.Plugin.Misc.AIInterview
+
+@{
+    Layout = "_AdminLayout";
+    ViewBag.PageTitle = T("Plugins.Misc.AIInterview.Admin.Configure.Title").Text;
+}
+
+<form asp-route="@AIInterviewDefaults.ConfigurationRouteName" method="post">
+    <div class="content-header clearfix">
+        <h1 class="float-left">
+            @T("Plugins.Misc.AIInterview.Admin.Configure.Title")
+        </h1>
+        <div class="float-right">
+            <button type="submit" name="save" class="btn btn-primary">
+                <i class="far fa-save"></i>
+                @T("Admin.Common.Save")
+            </button>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="form-horizontal">
+                <div class="cards-group">
+                    <div class="card card-default">
+                        <div class="card-header">
+                            @T("Plugins.Misc.AIInterview.Admin.Configure.General")
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group row">
+                                <div class="col-md-3">
+                                    <nop-label asp-for="Enabled" />
+                                </div>
+                                <div class="col-md-9">
+                                    <nop-editor asp-for="Enabled" />
+                                    <span asp-validation-for="Enabled"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</form>

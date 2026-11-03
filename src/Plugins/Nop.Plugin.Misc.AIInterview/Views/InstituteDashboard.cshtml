@@ -1,0 +1,298 @@
+@model InstituteDashboardPageModel
+
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts("Institute Dashboard");
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-institute-dashboard-page");
+    NopHtml.AppendPageCssClassParts("html-vendor-portal-page");
+
+    var dashboardUrl = Url.RouteUrl(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteDashboardTabKey });
+    var applicantsUrl = Url.RouteUrl(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteCandidatesTabKey });
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation",
+        new { selectedTabId = Model.SelectedNavigationTab })
+}
+
+<div class="page ai-institute-dashboard-page">
+    <div class="page-title">
+        <h1>Institute Dashboard@(string.IsNullOrEmpty(Model.VendorName) ? "" : $" - {Model.VendorName}")</h1>
+    </div>
+    <div class="page-body">
+        <div class="institute-dashboard-shell">
+            <nav class="institute-dashboard-tabs" aria-label="Institute portal">
+                <a class="institute-dashboard-tab @(Model.ActiveTab == AIInterviewDefaults.InstituteDashboardTabKey ? "is-active" : null)"
+                   href="@dashboardUrl"
+                   data-institute-tab="@AIInterviewDefaults.InstituteDashboardTabKey"
+                   hx-get="@dashboardUrl"
+                   hx-target="#institute-dashboard-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.InstituteDashboardTabKey ? "page" : null)">
+                    Dashboard
+                </a>
+                <a class="institute-dashboard-tab @(Model.ActiveTab == AIInterviewDefaults.InstituteCandidatesTabKey ? "is-active" : null)"
+                   href="@applicantsUrl"
+                   data-institute-tab="@AIInterviewDefaults.InstituteCandidatesTabKey"
+                   hx-get="@applicantsUrl"
+                   hx-target="#institute-dashboard-content"
+                   hx-swap="innerHTML"
+                   hx-push-url="true"
+                   aria-current="@(Model.ActiveTab == AIInterviewDefaults.InstituteCandidatesTabKey ? "page" : null)">
+                    Applicants
+                </a>
+            </nav>
+
+            <section id="institute-dashboard-content" class="institute-dashboard-content" aria-live="polite">
+                @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteDashboardTabContent.cshtml", Model)
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var instituteCreditModalTrigger = null;
+        var instituteLedgerModalTrigger = null;
+        var instituteNavClassByTab = {
+            '@AIInterviewDefaults.InstituteDashboardTabKey': 'institute-dashboard',
+            '@AIInterviewDefaults.InstituteCandidatesTabKey': 'institute-dashboard'
+        };
+
+        function getModal() {
+            return document.getElementById('institute-credit-modal');
+        }
+
+        function getLedgerModal() {
+            return document.getElementById('institute-ledger-modal');
+        }
+
+        function getFocusableElements(modal) {
+            if (!modal) {
+                return [];
+            }
+
+            return Array.prototype.slice.call(modal.querySelectorAll([
+                'a[href]',
+                'button:not([disabled])',
+                'input:not([disabled])',
+                'select:not([disabled])',
+                'textarea:not([disabled])',
+                '[tabindex]:not([tabindex="-1"])'
+            ].join(','))).filter(function (element) {
+                return element.offsetWidth > 0 || element.offsetHeight > 0 || element === document.activeElement;
+            });
+        }
+
+        function focusModalStart(modal) {
+            var closeButton = modal && modal.querySelector('.institute-credit-modal-close');
+            var focusTarget = closeButton || getFocusableElements(modal)[0] || modal.querySelector('.institute-credit-modal-dialog');
+            if (focusTarget && typeof focusTarget.focus === 'function') {
+                focusTarget.focus({ preventScroll: true });
+            }
+        }
+
+        function trapModalFocus(event, modal) {
+            var focusableElements = getFocusableElements(modal);
+            if (!focusableElements.length) {
+                event.preventDefault();
+                var dialog = modal.querySelector('.institute-credit-modal-dialog');
+                if (dialog) {
+                    dialog.focus({ preventScroll: true });
+                }
+                return;
+            }
+
+            var firstElement = focusableElements[0];
+            var lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus({ preventScroll: true });
+                return;
+            }
+
+            if (!event.shiftKey && document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus({ preventScroll: true });
+            }
+        }
+
+        function resetInstituteCreditModal(modal) {
+            var form = modal && modal.querySelector('form');
+            if (form) {
+                form.reset();
+            }
+            ['selectedCandidateCustomerId', 'institute-credit-modal-student', 'institute-credit-modal-balance'].forEach(function (id) {
+                var field = document.getElementById(id);
+                if (field) {
+                    field.value = '';
+                }
+            });
+        }
+
+        function syncInstituteNavigation(activeTab) {
+            var navClass = instituteNavClassByTab[activeTab] || instituteNavClassByTab['@AIInterviewDefaults.InstituteDashboardTabKey'];
+            document.querySelectorAll('.block-account-navigation .list > li').forEach(function (item) {
+                var isActive = item.classList.contains(navClass);
+                item.classList.toggle('active', isActive);
+                item.classList.toggle('inactive', !isActive);
+            });
+        }
+
+        window.syncInstituteNavigation = syncInstituteNavigation;
+        syncInstituteNavigation('@Model.ActiveTab');
+
+        window.closeInstituteCreditModal = function () {
+            var modal = getModal();
+            if (!modal) {
+                document.body.classList.remove('institute-credit-modal-open');
+                instituteCreditModalTrigger = null;
+                return;
+            }
+
+            var trigger = instituteCreditModalTrigger;
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('institute-credit-modal-open');
+            resetInstituteCreditModal(modal);
+            instituteCreditModalTrigger = null;
+
+            if (trigger && document.contains(trigger) && typeof trigger.focus === 'function') {
+                window.setTimeout(function () {
+                    trigger.focus({ preventScroll: true });
+                }, 0);
+            }
+        };
+
+        window.openInstituteCreditModal = function (trigger) {
+            var modal = getModal();
+            if (!modal) {
+                return;
+            }
+
+            instituteCreditModalTrigger = trigger || document.activeElement;
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('institute-credit-modal-open');
+            window.setTimeout(function () {
+                focusModalStart(modal);
+            }, 0);
+        };
+
+        window.closeInstituteLedgerModal = function () {
+            var modal = getLedgerModal();
+            var trigger = instituteLedgerModalTrigger;
+            document.body.classList.remove('institute-ledger-modal-open');
+            instituteLedgerModalTrigger = null;
+
+            if (modal) {
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+
+            var host = document.getElementById('institute-ledger-modal-host');
+            if (host) {
+                host.innerHTML = '';
+            }
+
+            if (trigger && document.contains(trigger) && typeof trigger.focus === 'function') {
+                window.setTimeout(function () {
+                    trigger.focus({ preventScroll: true });
+                }, 0);
+            }
+        };
+
+        window.openInstituteLedgerModal = function (trigger) {
+            var modal = getLedgerModal();
+            if (!modal) {
+                return;
+            }
+
+            instituteLedgerModalTrigger = trigger || instituteLedgerModalTrigger || document.activeElement;
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('institute-ledger-modal-open');
+            window.setTimeout(function () {
+                focusModalStart(modal);
+            }, 0);
+        };
+
+        if (window.__aiInstituteDashboardRuntimeBound) {
+            return;
+        }
+        window.__aiInstituteDashboardRuntimeBound = true;
+
+        document.addEventListener('click', function (event) {
+            var editButton = event.target.closest('.institute-candidate-edit');
+            if (editButton && !(getModal() && getModal().classList.contains('is-open'))) {
+                window.openInstituteCreditModal(editButton);
+            }
+            var historyButton = event.target.closest('.institute-applicant-history');
+            if (historyButton) {
+                instituteLedgerModalTrigger = historyButton;
+            }
+            if (event.target.closest('.institute-credit-modal-backdrop')) {
+                window.closeInstituteCreditModal();
+            }
+            if (event.target.closest('.institute-ledger-modal-backdrop')) {
+                window.closeInstituteLedgerModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            var modal = getModal();
+            var ledgerModal = getLedgerModal();
+            if ((!modal || !modal.classList.contains('is-open')) &&
+                (!ledgerModal || !ledgerModal.classList.contains('is-open'))) {
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                if (ledgerModal && ledgerModal.classList.contains('is-open')) {
+                    window.closeInstituteLedgerModal();
+                } else {
+                    window.closeInstituteCreditModal();
+                }
+                return;
+            }
+
+            if (event.key === 'Tab') {
+                trapModalFocus(event, ledgerModal && ledgerModal.classList.contains('is-open') ? ledgerModal : modal);
+            }
+        });
+
+        document.body.addEventListener('htmx:beforeSwap', function (event) {
+            if (event.detail && event.detail.target && event.detail.target.id === 'institute-dashboard-content') {
+                window.closeInstituteCreditModal();
+                window.closeInstituteLedgerModal();
+            }
+        });
+
+        document.body.addEventListener('htmx:afterSwap', function (event) {
+            if (event.detail && event.detail.target && event.detail.target.id === 'institute-dashboard-content') {
+                window.closeInstituteCreditModal();
+                window.setTimeout(function () {
+                    var activeTab = '@AIInterviewDefaults.InstituteDashboardTabKey';
+                    var activeTabElement = document.querySelector('.institute-dashboard-tab.is-active');
+                    if (activeTabElement) {
+                        activeTab = activeTabElement.getAttribute('data-institute-tab') || activeTab;
+                    } else {
+                        activeTab = new URL(window.location.href).searchParams.get('tab') || activeTab;
+                    }
+                    syncInstituteNavigation(activeTab);
+                }, 0);
+            }
+
+            if (event.detail && event.detail.target && event.detail.target.id === 'institute-ledger-modal-host') {
+                window.openInstituteLedgerModal(instituteLedgerModalTrigger);
+            }
+        });
+    })();
+</script>

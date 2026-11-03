@@ -1,0 +1,24 @@
+@model InstituteDashboardPageModel
+
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts("Credits");
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-institute-credits-page");
+    NopHtml.AppendPageCssClassParts("html-vendor-portal-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation",
+        new { selectedTabId = AIInterviewDefaults.InstituteCreditsNavigationTab })
+}
+
+<div class="page ai-institute-credits-page">
+    <div class="page-title"><h1>Credits</h1></div>
+    <div class="page-body">
+        @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_InstituteCreditsTab.cshtml", Model)
+    </div>
+</div>

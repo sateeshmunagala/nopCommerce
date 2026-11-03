@@ -1,0 +1,146 @@
+@model Nop.Web.Models.Catalog.ProductDetailsModel
+@using Nop.Web.Framework.Mvc.Routing
+@{
+    bool hasCredits = ViewBag.HasCredits != null && (bool)ViewBag.HasCredits;
+    bool hasSponsorCredits = ViewBag.HasSponsorCredits != null && (bool)ViewBag.HasSponsorCredits;
+    bool isAuthenticated = ViewBag.IsAuthenticated != null && (bool)ViewBag.IsAuthenticated;
+    bool alreadyApplied = ViewBag.AlreadyApplied != null && (bool)ViewBag.AlreadyApplied;
+    bool resumeRequired = ViewBag.ResumeRequired != null && (bool)ViewBag.ResumeRequired;
+    bool isLaunchOnly = ViewBag.IsLaunchOnly != null && (bool)ViewBag.IsLaunchOnly;
+    bool interviewRecordRequired = ViewBag.InterviewRecordRequired != null && (bool)ViewBag.InterviewRecordRequired;
+    var availableInterviewSessions = ViewBag.AvailableInterviewSessions as IList<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+    int productId = ViewBag.ProductId != null ? (int)ViewBag.ProductId : 0;
+    string sponsorToken = ViewBag.SponsorToken as string;
+    string creditPurchasePageUrl = ViewBag.CreditPurchasePageUrl as string ?? "/pricing";
+    string interviewError = Context?.Request?.Query["interviewError"].ToString();
+    string productFormId = ViewBag.ProductFormId as string ?? "product-details-form";
+    string jobAiContextId = ViewBag.JobAiContextId as string ?? $"job-{productId}";
+    string interviewSessionSelectId = $"job-interview-session-{jobAiContextId}";
+    string resumeInputId = $"job-resume-file-{jobAiContextId}";
+    string existingResumeSelectId = $"job-existing-resume-{jobAiContextId}";
+    string applyPanelId = $"job-apply-panel-{jobAiContextId}";
+    string applyButtonId = $"job-apply-button-{jobAiContextId}";
+    string startButtonId = $"start-job-interview-{jobAiContextId}";
+    string feedbackId = $"job-ai-feedback-{jobAiContextId}";
+    var availableResumes = ViewBag.AvailableResumes as IList<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendScriptParts(Nop.Web.Framework.UI.ResourceLocation.Footer, "~/Plugins/Misc.AIInterview/Content/js/aiinterview-job-card.js");
+}
+
+<div class="job-ai-panel ai-interview-product-details"
+     data-job-ai-panel="true"
+     data-job-ai-context-id="@jobAiContextId"
+     data-product-id="@productId"
+     data-product-form-id="@productFormId"
+     data-apply-panel-id="@applyPanelId"
+     data-feedback-id="@feedbackId"
+     data-start-url="@Url.RouteUrl(AIInterviewDefaults.MockStartRouteName)"
+     data-apply-url="@Url.RouteUrl(AIInterviewDefaults.ApplyInlineRouteName)"
+     data-login-url="@Url.RouteUrl(NopRouteNames.General.LOGIN)"
+     data-sponsor-token="@sponsorToken"
+     data-request-error="Unable to reach the interview service. Please check your network and try again.">
+    <div class="job-ai-grid">
+        <div>
+            <h2>@T("Plugins.Misc.AIInterview.Interview.Title")</h2>
+        </div>
+
+        @if (hasSponsorCredits)
+        {
+            <div class="job-inline-message is-visible is-success">
+                @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
+            </div>
+        }
+        else if (string.Equals(interviewError, "expired", StringComparison.OrdinalIgnoreCase))
+        {
+            <div class="job-inline-message is-visible is-error">
+                @T("Plugins.Misc.AIInterview.Runtime.Error.ExpiredLink")
+            </div>
+        }
+
+        @if (alreadyApplied)
+        {
+            <div class="job-inline-message is-visible is-info">
+                @T("Plugins.Misc.AIInterview.Apply.AlreadyApplied")
+            </div>
+        }
+
+        <div class="job-ai-card">
+            <h3>@(isLaunchOnly ? T("Plugins.Misc.AIInterview.Interview.Title") : T("Plugins.Misc.AIInterview.Apply.Title"))</h3>
+            <div id="@applyPanelId">
+                <input type="hidden" name="ProductId" value="@productId" />
+                <input type="hidden" name="JobTitle" value="@Model.Name" />
+                @if (isAuthenticated)
+                {
+                    @if (!isLaunchOnly && resumeRequired)
+                    {
+                        <p class="job-ai-note job-ai-note-required">@T("Plugins.Misc.AIInterview.Apply.ResumeRequired")</p>
+                    }
+                    @if (!isLaunchOnly)
+                    {
+                        <label for="@resumeInputId">@T("Plugins.Misc.AIInterview.Apply.ResumeFile")</label>
+                        <input id="@resumeInputId" name="ResumeFile" type="file" accept=".pdf,.docx" />
+                        @if (availableResumes.Any())
+                        {
+                            <label for="@existingResumeSelectId">@T("Plugins.Misc.AIInterview.Apply.PreviousResume")</label>
+                            <select id="@existingResumeSelectId" name="SelectedResumeDownloadId">
+                                <option value="0">@T("Plugins.Misc.AIInterview.Apply.PreviousResume.Placeholder")</option>
+                                @foreach (var option in availableResumes)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        }
+                        <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.ResumeFile.Help")</p>
+                    }
+                    @if (interviewRecordRequired)
+                    {
+                        <p class="job-ai-note job-ai-note-required">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.None")</p>
+                    }
+                    else if (!isLaunchOnly && availableInterviewSessions.Any())
+                    {
+                        <label for="@interviewSessionSelectId">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord")</label>
+                        <select id="@interviewSessionSelectId" name="SelectedInterviewSessionId" required>
+                            <option value="0">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.Placeholder")</option>
+                            @foreach (var option in availableInterviewSessions)
+                            {
+                                <option value="@option.Value">@option.Text</option>
+                            }
+                        </select>
+                        <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Apply.InterviewRecord.Help")</p>
+                    }
+                    else if (isLaunchOnly)
+                    {
+                        <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Interview.LaunchReady")</p>
+                    }
+                }
+                else
+                {
+                    <p class="job-ai-note">@T("Plugins.Misc.AIInterview.Interview.SignInPrompt")</p>
+                }
+                <div class="job-ai-actions">
+                    @if (!isLaunchOnly || interviewRecordRequired)
+                    {
+                        <button type="button"
+                                class="job-ai-action job-ai-action-primary apply-btn"
+                                id="@applyButtonId"
+                                data-job-ai-action="apply"
+                                title="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
+                                aria-label="@T("Plugins.Misc.AIInterview.Index.ApplyNow")"
+                                @(alreadyApplied || interviewRecordRequired ? "disabled" : null)><i class="fa-regular fa-file-lines" aria-hidden="true"></i>@T("Plugins.Misc.AIInterview.Index.ApplyNow")</button>
+                    }
+                    <button type="button"
+                            class="job-ai-action @(isLaunchOnly ? "job-ai-action-primary" : "job-ai-action-secondary") start-interview-btn"
+                            id="@startButtonId"
+                            data-job-ai-action="start"
+                            title="@T("Plugins.Misc.AIInterview.Index.StartInterview")"
+                            data-start-interview-button="true"><i class="fa-solid fa-bolt" aria-hidden="true"></i>@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+                </div>
+                <p class="job-ai-note job-ai-credit-notice">
+                    @T("Plugins.Misc.AIInterview.Interview.StartCreditNotice")
+                </p>
+            </div>
+        </div>
+
+        <div id="@feedbackId" class="job-inline-message" role="status" aria-live="polite"></div>
+    </div>
+</div>

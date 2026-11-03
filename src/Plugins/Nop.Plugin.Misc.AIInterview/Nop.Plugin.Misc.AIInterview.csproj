@@ -1,0 +1,346 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Copyright>Copyright © Nop Solutions, Ltd</Copyright>
+    <Company>Nop Solutions, Ltd</Company>
+    <Authors>Nop Solutions, Ltd</Authors>
+    <PackageLicenseUrl></PackageLicenseUrl>
+    <PackageProjectUrl>https://www.nopcommerce.com/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/nopSolutions/nopCommerce</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <OutputPath>$(MSBuildProjectDirectory)\..\..\Presentation\Nop.Web\Plugins\Misc.AIInterview\</OutputPath>
+    <OutDir>$(OutputPath)</OutDir>
+    <!--Set this parameter to true to get the dlls copied from the NuGet cache to the output of your project.
+    You need to set this parameter to true if your plugin has a nuget package
+    to ensure that the dlls copied from the NuGet cache to the output of your project-->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="AI_ReferenceFiles\**\*" />
+    <Content Remove="AI_ReferenceFiles\**\*" />
+    <None Remove="AI_ReferenceFiles\**\*" />
+    <None Remove="Areas\Admin\Views\_ViewImports.cshtml" />
+    <None Remove="Areas\Admin\Views\AIInterviewAdmin\CandidateDetails.cshtml" />
+    <None Remove="Content\css\aiinterview-public.css" />
+    <None Remove="Content\images\default-avatar.svg" />
+    <None Remove="Content\images\screen-share-entire-screen.png" />
+    <None Remove="Content\js\aiinterview-job-card.js" />
+    <None Remove="logo.png" />
+    <None Remove="plugin.json" />
+    <None Remove="Views\Admin\MockPracticeSessions.cshtml" />
+    <None Remove="Views\InstituteCandidates.cshtml" />
+    <None Remove="Views\InstituteCredits.cshtml" />
+    <None Remove="Views\InstituteDashboard.cshtml" />
+    <None Remove="Views\InstituteApplicantInterviews.cshtml" />
+    <None Remove="Views\MockAiInterview\_Runtime.Tour.cshtml" />
+    <None Remove="Views\ReportShare.cshtml" />
+    <None Remove="Views\Shared\Components\AIInterviewInstituteRedirect\Default.cshtml" />
+    <None Remove="Views\Shared\_MyActivitySponsoredInterviewsContent.cshtml" />
+    <None Remove="Views\Shared\_ReportShareContent.cshtml" />
+    <None Remove="Views\_ViewImports.cshtml" />
+    <None Remove="Views\Apply.cshtml" />
+    <None Remove="Views\Configure.cshtml" />
+    <None Remove="Views\Index.cshtml" />
+    <None Remove="Views\MyActivity.cshtml" />
+    <None Remove="Views\MyApplications.cshtml" />
+    <None Remove="Views\EmployerDashboard.cshtml" />
+    <None Remove="Views\ProductTemplate.JobDetails.cshtml" />
+    <None Remove="Views\ProductTemplate.FixedQuestionJobDetails.cshtml" />
+    <None Remove="Views\ProductTemplate.MockPractice.cshtml" />
+    <None Remove="Views\ProductTemplate.ResumeInterview.cshtml" />
+    <None Remove="Views\EmployerApplications.cshtml" />
+    <None Remove="Views\Report.cshtml" />
+    <None Remove="Views\VendorScoreboard.cshtml" />
+    <None Remove="Views\VendorJobCreation.cshtml" />
+    <None Remove="Views\RuntimeError.cshtml" />
+    <None Remove="Views\Admin\AiService.cshtml" />
+    <None Remove="Views\Admin\SponsorInvites.cshtml" />
+    <None Remove="Views\Admin\VendorCredits.cshtml" />
+    <None Remove="Views\Admin\ApplicantCredits.cshtml" />
+    <None Remove="Views\Admin\Scoreboard.cshtml" />
+    <None Remove="Views\Admin\FeedbackReports.cshtml" />
+    <None Remove="Views\Admin\_ProductJobRequirements.cshtml" />
+    <None Remove="Views\Shared\_CandidateReportDrawer.cshtml" />
+    <None Remove="Views\Shared\_AIInterviewJobDetailsContent.cshtml" />
+    <None Remove="Views\Shared\_AIInterviewJobDetailsDrawer.cshtml" />
+    <None Remove="Views\Shared\_InterviewReportContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardApplicationsContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardInvitesContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardJobsContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardOverviewContent.cshtml" />
+    <None Remove="Views\Shared\_EmployerDashboardTabContent.cshtml" />
+    <None Remove="Views\Shared\_InstituteCandidateCreditModal.cshtml" />
+    <None Remove="Views\Shared\_InstituteCandidatesTab.cshtml" />
+    <None Remove="Views\Shared\_InstituteCreditsTab.cshtml" />
+    <None Remove="Views\Shared\_InstituteDashboardSummaryTab.cshtml" />
+    <None Remove="Views\Shared\_InstituteDashboardTabContent.cshtml" />
+    <None Remove="Views\Shared\_MyActivityPager.cshtml" />
+    <None Remove="Views\Shared\_MyActivityCreditsContent.cshtml" />
+    <None Remove="Views\Shared\_MyActivitySavedJobsContent.cshtml" />
+    <None Remove="Views\Shared\_MyActivityTabContent.cshtml" />
+    <None Remove="Views\Shared\_MyApplicationsContent.cshtml" />
+    <None Remove="Views\Shared\_MockInterviewHistoryContent.cshtml" />
+    <None Remove="Views\Shared\Components\AIInterviewJobProductCard\Default.cshtml" />
+    <None Remove="Views\Shared\Components\AIInterviewHomepageTopPerformers\Default.cshtml" />
+    <None Remove="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml" />
+    <None Remove="Views\Shared\Components\VendorPortalHeaderLinks\Default.cshtml" />
+    <None Remove="Views\Shared\Components\VendorPortalLogo\Default.cshtml" />
+    <None Remove="Views\MockAiInterview\Start.cshtml" />
+    <None Remove="Views\MockAiInterview\Runtime.cshtml" />
+    <None Remove="Views\MockAiInterview\History.cshtml" />
+    <None Remove="Views\MockAiInterview\Report.cshtml" />
+    <None Remove="Views\MockAiInterview\EmployerManage.cshtml" />
+    <None Remove="Views\MockAiInterviewAdmin\Configure.cshtml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Areas\Admin\Views\_ViewImports.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Areas\Admin\Views\AIInterviewAdmin\CandidateDetails.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\css\aiinterview-public.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Content\images\default-avatar.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Content\images\screen-share-entire-screen.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Content\js\aiinterview-job-card.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="logo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="plugin.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\MockPracticeSessions.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Apply.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Configure.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Index.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\InstituteCandidates.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\InstituteCredits.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\InstituteDashboard.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\InstituteApplicantInterviews.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\_Runtime.Tour.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MyActivity.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MyApplications.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\EmployerDashboard.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\ProductTemplate.JobDetails.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\ProductTemplate.FixedQuestionJobDetails.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\ProductTemplate.MockPractice.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\ProductTemplate.ResumeInterview.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\EmployerApplications.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Report.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\ReportShare.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\AIInterviewInstituteRedirect\Default.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivitySponsoredInterviewsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_ReportShareContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_InstituteCandidateCreditModal.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_InstituteApplicantLedgerModal.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_InstituteCandidatesTab.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_InstituteCreditsTab.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_InstituteDashboardSummaryTab.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_InstituteDashboardTabContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\VendorScoreboard.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\VendorJobCreation.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\RuntimeError.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\AiService.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\SponsorInvites.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\VendorCredits.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\ApplicantCredits.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\Scoreboard.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\FeedbackReports.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Admin\_ProductJobRequirements.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_CandidateReportDrawer.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_AIInterviewJobDetailsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_AIInterviewJobDetailsDrawer.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_InterviewReportContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardApplicationsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardInvitesContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardJobsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardOverviewContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_EmployerDashboardTabContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivityPager.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivityCreditsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivitySavedJobsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyActivityTabContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MyApplicationsContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\_MockInterviewHistoryContent.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\AIInterviewJobProductCard\Default.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\AIInterviewHomepageTopPerformers\Default.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\AIInterviewProductDetails\Default.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\VendorPortalHeaderLinks\Default.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\Shared\Components\VendorPortalLogo\Default.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\Start.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\Runtime.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\History.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\Report.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterview\EmployerManage.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\MockAiInterviewAdmin\Configure.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\_ViewImports.cshtml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <ProjectReference Include="$(MSBuildProjectDirectory)\..\..\Presentation\Nop.Web.Framework\Nop.Web.Framework.csproj" />
+    <ProjectReference Include="$(MSBuildProjectDirectory)\..\..\Presentation\Nop.Web\Nop.Web.csproj" />
+    <ClearPluginAssemblies Include="$(MSBuildProjectDirectory)\..\..\Build\ClearPluginAssemblies.proj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Content\css\aiinterview-admin.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- This target execute after "Build" target -->
+  <Target Name="NopTarget" AfterTargets="Build">
+    <!-- Remove artifacts left by the former hard reference to the optional WhatsApp plugin. -->
+    <Delete Files="$(OutDir)Nop.Plugin.Misc.WhatsAppBusiness.dll;$(OutDir)Nop.Plugin.Misc.WhatsAppBusiness.pdb" />
+    <!-- Delete unnecessary libraries from plugins path -->
+    <MSBuild Projects="@(ClearPluginAssemblies)" Properties="PluginPath=$(OutDir)" Targets="NopClear" />
+  </Target>
+
+</Project>

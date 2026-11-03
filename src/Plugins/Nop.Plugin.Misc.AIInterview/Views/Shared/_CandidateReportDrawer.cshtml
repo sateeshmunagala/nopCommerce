@@ -1,0 +1,234 @@
+@{
+    var drawerTitleText = T("Plugins.Misc.AIInterview.Report.DrawerTitle").Text;
+    var closePanelText = T("Plugins.Misc.AIInterview.Report.ClosePanel").Text;
+    var loadingText = T("Plugins.Misc.AIInterview.Report.Loading").Text;
+    var loadFailedText = T("Plugins.Misc.AIInterview.Report.LoadFailed").Text;
+    var copiedText = T("Plugins.Misc.AIInterview.Report.Copied").Text;
+    var copyFailedText = T("Plugins.Misc.AIInterview.Report.CopyFailed").Text;
+    var recordingShareTitleText = T("Plugins.Misc.AIInterview.Report.RecordingShareTitle").Text;
+}
+
+<div class="ai-report-drawer" id="ai-report-drawer" aria-hidden="true"
+     data-drawer-title="@drawerTitleText"
+     data-loading-text="@loadingText"
+     data-load-failed-text="@loadFailedText"
+     data-copied-text="@copiedText"
+     data-copy-failed-text="@copyFailedText"
+     data-recording-share-title="@recordingShareTitleText">
+    <div class="ai-report-drawer-backdrop" data-report-drawer-close="true"></div>
+    <div class="ai-report-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="ai-report-drawer-title" tabindex="-1">
+        <div class="ai-report-drawer-header">
+            <h2 id="ai-report-drawer-title">@drawerTitleText</h2>
+            <button type="button" class="ai-report-drawer-close" aria-label="@closePanelText" data-report-drawer-close="true">&times;</button>
+        </div>
+        <div class="ai-report-drawer-status" aria-live="polite"></div>
+        <div class="ai-report-drawer-body"></div>
+    </div>
+</div>
+
+<script>
+(() => {
+    if (window.__aiInterviewCandidateDrawerInitialized) {
+        return;
+    }
+    window.__aiInterviewCandidateDrawerInitialized = true;
+
+    const drawer = document.getElementById('ai-report-drawer');
+    if (!drawer) {
+        return;
+    }
+
+    if (drawer.parentElement !== document.body) {
+        document.body.appendChild(drawer);
+    }
+
+    const panel = drawer.querySelector('.ai-report-drawer-panel');
+    const title = drawer.querySelector('#ai-report-drawer-title');
+    const body = drawer.querySelector('.ai-report-drawer-body');
+    const status = drawer.querySelector('.ai-report-drawer-status');
+    const defaultDrawerTitle = drawer.dataset.drawerTitle || '';
+    const loadingText = drawer.dataset.loadingText || '';
+    const loadFailedText = drawer.dataset.loadFailedText || '';
+    const copiedText = drawer.dataset.copiedText || '';
+    const copyFailedText = drawer.dataset.copyFailedText || '';
+    const recordingShareTitle = drawer.dataset.recordingShareTitle || '';
+    let lastTrigger = null;
+
+    const clearCopyFeedback = (button) => {
+        if (!button) {
+            return;
+        }
+
+        button.classList.remove('is-success', 'is-error');
+        if (button.dataset.originalAriaLabel !== undefined) {
+            button.setAttribute('aria-label', button.dataset.originalAriaLabel);
+        }
+        if (button.dataset.originalTitle !== undefined) {
+            button.setAttribute('title', button.dataset.originalTitle);
+        }
+    };
+
+    const showCopyFeedback = (button, state, message) => {
+        if (!button) {
+            return;
+        }
+
+        if (button.dataset.originalAriaLabel === undefined) {
+            button.dataset.originalAriaLabel = button.getAttribute('aria-label') || '';
+        }
+        if (button.dataset.originalTitle === undefined) {
+            button.dataset.originalTitle = button.getAttribute('title') || '';
+        }
+
+        if (button.__copyFeedbackTimer) {
+            window.clearTimeout(button.__copyFeedbackTimer);
+        }
+
+        button.classList.remove('is-success', 'is-error');
+        if (state) {
+            button.classList.add(state);
+        }
+        if (message) {
+            button.setAttribute('aria-label', message);
+            button.setAttribute('title', message);
+        }
+
+        button.__copyFeedbackTimer = window.setTimeout(() => {
+            clearCopyFeedback(button);
+            button.__copyFeedbackTimer = null;
+        }, 2200);
+    };
+
+    const setStatus = (message) => {
+        if (status) {
+            status.textContent = message || '';
+        }
+    };
+
+    const closeDrawer = () => {
+        drawer.classList.remove('is-open');
+        drawer.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('aiinterview-report-drawer-open');
+        body.innerHTML = '';
+        setStatus('');
+        if (lastTrigger && typeof lastTrigger.focus === 'function') {
+            lastTrigger.focus();
+        }
+    };
+
+    const openDrawer = () => {
+        drawer.classList.add('is-open');
+        drawer.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('aiinterview-report-drawer-open');
+        window.setTimeout(() => panel.focus(), 0);
+    };
+
+    const writeToClipboard = async (text) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+
+        const tempInput = document.createElement('input');
+        tempInput.type = 'text';
+        tempInput.value = text;
+        tempInput.setAttribute('readonly', 'readonly');
+        tempInput.style.position = 'absolute';
+        tempInput.style.left = '-9999px';
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        return copied;
+    };
+
+    document.addEventListener('click', async (event) => {
+        const closeTrigger = event.target.closest('[data-report-drawer-close="true"]');
+        if (closeTrigger) {
+            event.preventDefault();
+            closeDrawer();
+            return;
+        }
+
+        const reportTrigger = event.target.closest('.js-open-report-drawer');
+        if (reportTrigger) {
+            const panelUrl = reportTrigger.getAttribute('data-report-panel-url');
+            const fallbackUrl = reportTrigger.getAttribute('href');
+            if (!panelUrl || !window.fetch) {
+                return;
+            }
+
+            event.preventDefault();
+            lastTrigger = reportTrigger;
+            title.textContent = reportTrigger.getAttribute('data-report-title') || defaultDrawerTitle;
+            body.innerHTML = '';
+            setStatus(loadingText);
+            openDrawer();
+
+            try {
+                const response = await fetch(panelUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!response.ok) {
+                    throw new Error(loadFailedText);
+                }
+
+                body.innerHTML = await response.text();
+                setStatus('');
+                if (navigator.share) {
+                    body.querySelectorAll('.ai-native-share-link').forEach((button) => button.classList.remove('aiinterview-hidden'));
+                }
+            } catch (error) {
+                closeDrawer();
+                if (fallbackUrl) {
+                    window.location.href = fallbackUrl;
+                }
+            }
+            return;
+        }
+
+        const copyTrigger = event.target.closest('.ai-copy-share-link');
+        if (copyTrigger) {
+            event.preventDefault();
+            const shareUrl = copyTrigger.getAttribute('data-share-url');
+            if (!shareUrl) {
+                return;
+            }
+
+            try {
+                await writeToClipboard(shareUrl);
+                showCopyFeedback(copyTrigger, 'is-success', copiedText);
+            } catch (error) {
+                showCopyFeedback(copyTrigger, 'is-error', copyFailedText);
+            }
+            return;
+        }
+
+        const shareTrigger = event.target.closest('.ai-native-share-link');
+        if (shareTrigger) {
+            event.preventDefault();
+            const shareUrl = shareTrigger.getAttribute('data-share-url');
+            if (!shareUrl) {
+                return;
+            }
+
+            if (!navigator.share) {
+                window.open(shareUrl, '_blank', 'noopener');
+                return;
+            }
+
+            try {
+                await navigator.share({
+                    title: shareTrigger.getAttribute('data-share-title') || recordingShareTitle,
+                    url: shareUrl
+                });
+            } catch (error) {
+            }
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && drawer.classList.contains('is-open')) {
+            closeDrawer();
+        }
+    });
+})();
+</script>

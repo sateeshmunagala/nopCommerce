@@ -1,0 +1,11 @@
+{
+  "Group": "Misc",
+  "FriendlyName": "AI Interview",
+  "SystemName": "Misc.AIInterview",
+  "Version": "1.29",
+  "SupportedVersions": [ "5.00" ],
+  "Author": "skillFinder team",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Misc.AIInterview.dll",
+  "Description": "AI Interview plugin"
+}

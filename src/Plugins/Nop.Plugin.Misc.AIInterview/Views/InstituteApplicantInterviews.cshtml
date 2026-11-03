@@ -1,0 +1,36 @@
+@model InstituteApplicantInterviewsPageModel
+@using Nop.Plugin.Misc.AIInterview
+
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts($"AI Interviews - {Model.ApplicantName}");
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-vendor-portal-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-institute-dashboard-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation",
+        new { selectedTabId = AIInterviewDefaults.InstituteDashboardNavigationTab })
+}
+
+<div class="page ai-institute-dashboard-page">
+    <a class="institute-back-link" href="@Url.RouteUrl(AIInterviewDefaults.InstituteDashboardRouteName, new { tab = AIInterviewDefaults.InstituteCandidatesTabKey })">&larr; Applicants</a>
+    <div class="page-title">
+        <h1>AI Interviews - @Model.ApplicantName</h1>
+    </div>
+    <div class="page-body">
+        <p class="institute-applicant-subtitle">@Model.ApplicantEmail</p>
+        @if (!Model.Sessions.Any())
+        {
+            <p class="institute-candidates-empty">No AI interview sessions have been recorded for this applicant yet.</p>
+        }
+        else
+        {
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_MockInterviewHistoryContent.cshtml", Model.Sessions)
+        }
+    </div>
+</div>

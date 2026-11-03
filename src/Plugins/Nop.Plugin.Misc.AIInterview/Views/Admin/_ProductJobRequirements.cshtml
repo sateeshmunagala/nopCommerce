@@ -1,0 +1,97 @@
+@model Nop.Web.Areas.Admin.Models.Catalog.ProductModel
+@using Nop.Plugin.Misc.AIInterview
+
+@{
+    var resumeRequired = ViewBag.ResumeRequired != null && (bool)ViewBag.ResumeRequired;
+    var interviewRequired = ViewBag.InterviewRequired != null && (bool)ViewBag.InterviewRequired;
+    var minimumScore = ViewBag.MinimumScore != null ? Convert.ToDecimal(ViewBag.MinimumScore) : 0m;
+    var questionCount = ViewBag.QuestionCount != null ? Convert.ToInt32(ViewBag.QuestionCount) : 3;
+}
+
+<nop-card asp-name="aiinterview-job-requirements"
+          asp-icon="fas fa-briefcase"
+          asp-title="@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.Title")"
+          asp-advanced="false"
+          asp-hide-block-attribute-name="aiinterview-job-requirements"
+          asp-hide="false">
+    <div class="form-group row">
+        <div class="col-md-12 text-muted">
+            @T("Plugins.Misc.AIInterview.Admin.ProductRequirements.Hint")
+        </div>
+    </div>
+    <div class="form-group row">
+        <div class="col-md-3">
+            <label class="col-form-label" for="AIInterviewJobResumeRequired">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.ResumeRequired")</label>
+        </div>
+        <div class="col-md-9">
+            <input type="hidden" name="AIInterviewJobResumeRequired" value="false" />
+            <input type="checkbox"
+                   class="form-check-input"
+                   id="AIInterviewJobResumeRequired"
+                   name="AIInterviewJobResumeRequired"
+                   value="true"
+                   @(resumeRequired ? "checked" : null) />
+        </div>
+    </div>
+    <div class="form-group row">
+        <div class="col-md-3">
+            <label class="col-form-label" for="AIInterviewJobInterviewRequired">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.InterviewRequired")</label>
+        </div>
+        <div class="col-md-9">
+            <input type="hidden" name="AIInterviewJobInterviewRequired" value="false" />
+            <input type="checkbox"
+                   class="form-check-input"
+                   id="AIInterviewJobInterviewRequired"
+                   name="AIInterviewJobInterviewRequired"
+                   value="true"
+                   @(interviewRequired ? "checked" : null) />
+        </div>
+    </div>
+    <div class="form-group row">
+        <div class="col-md-3">
+            <label class="col-form-label" for="AIInterviewJobMinimumScore">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.MinimumScore")</label>
+        </div>
+        <div class="col-md-9">
+            <input type="number"
+                   class="form-control"
+                   id="AIInterviewJobMinimumScore"
+                   name="AIInterviewJobMinimumScore"
+                   value="@minimumScore.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                   step="0.01"
+                   min="0" />
+            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.MinimumScore.Hint")</small>
+        </div>
+    </div>
+    <div class="form-group row aiinterview-question-count-row" @(interviewRequired ? string.Empty : "style=\"display:none;\"")>
+        <div class="col-md-3">
+            <label class="col-form-label" for="AIInterviewJobQuestionCount">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.QuestionCount")</label>
+        </div>
+        <div class="col-md-9">
+            <input type="number"
+                   class="form-control"
+                   id="AIInterviewJobQuestionCount"
+                   name="AIInterviewJobQuestionCount"
+                   value="@questionCount"
+                   min="1"
+                   max="10"
+                   step="1" />
+            <small class="form-text text-muted">@T("Plugins.Misc.AIInterview.Admin.ProductRequirements.QuestionCount.Hint")</small>
+        </div>
+    </div>
+</nop-card>
+
+<script asp-location="Footer">
+    (() => {
+        const interviewRequired = document.getElementById('AIInterviewJobInterviewRequired');
+        const questionCountRow = document.querySelector('.aiinterview-question-count-row');
+        if (!interviewRequired || !questionCountRow)
+            return;
+
+        const updateVisibility = () => {
+            questionCountRow.style.display = interviewRequired.checked ? '' : 'none';
+        };
+
+        interviewRequired.addEventListener('change', updateVisibility);
+        updateVisibility();
+    })();
+</script>

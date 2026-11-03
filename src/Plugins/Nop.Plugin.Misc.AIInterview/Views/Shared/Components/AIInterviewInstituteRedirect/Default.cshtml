@@ -1,0 +1,20 @@
+@{
+    var dashboardUrl = Url.RouteUrl(AIInterviewDefaults.InstituteDashboardRouteName);
+}
+@if (!string.IsNullOrWhiteSpace(dashboardUrl))
+{
+    <script>
+        (function () {
+            var key = 'inst_redirected';
+            if (!sessionStorage.getItem(key)) {
+                var path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+                var isPortalEntry = path === ''
+                    || path === '/customer/info';
+                if (isPortalEntry) {
+                    sessionStorage.setItem(key, '1');
+                    window.location.replace('@Html.Raw(dashboardUrl)');
+                }
+            }
+        })();
+    </script>
+}

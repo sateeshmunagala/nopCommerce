@@ -1,0 +1,417 @@
+@using Nop.Core
+@using Nop.Services.Helpers
+@model CustomerInfoModel
+@inject IWebHelper webHelper
+@inject IWorkContext workContext
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AddTitleParts(T("PageTitle.Account").Text);
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-customer-info-page");
+    var hideCustomAttributesForVendor = (await workContext.GetCurrentVendorAsync()) != null;
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/css/intlTelInput.css" />
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/intlTelInput.min.js"></script>
+<style>
+    .html-customer-info-page .customer-info-page .iti {
+        position: relative;
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .html-customer-info-page .customer-info-page .iti__tel-input {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        min-width: 0;
+        min-height: 42px;
+        height: 42px;
+    }
+
+    .html-customer-info-page .customer-info-page .iti.iti--separate-dial-code .iti__tel-input {
+        padding-left: 96px;
+    }
+
+    .html-customer-info-page .customer-info-page .iti__country-container {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        display: flex;
+        width: auto;
+        height: 100%;
+        align-items: stretch;
+    }
+
+    .html-customer-info-page .customer-info-page .iti__selected-country {
+        box-sizing: border-box;
+        display: flex;
+        width: auto;
+        min-width: 0;
+        height: 100%;
+        margin: 0;
+        border: 0;
+        padding: 0 8px;
+        flex-direction: row;
+        align-items: center;
+        background: transparent;
+    }
+
+    .html-customer-info-page .customer-info-page .iti__selected-country-primary {
+        display: flex;
+        align-items: center;
+    }
+
+    .html-customer-info-page .customer-info-page .iti__selected-dial-code {
+        display: flex;
+        align-items: center;
+        margin-left: 4px;
+        color: gray;
+        font-size: 14px;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .html-customer-info-page .iti__dropdown-content {
+        box-sizing: border-box;
+        min-width: min(280px, calc(100vw - 24px));
+        max-width: calc(100vw - 24px);
+        background: #fff;
+        color: #30363c;
+        font-size: 14px;
+        line-height: 1.4;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .html-customer-info-page .iti__hide {
+        display: none;
+    }
+
+    .html-customer-info-page .iti__country-list {
+        display: block;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow-y: auto;
+        background: #fff;
+        list-style: none;
+        text-align: left;
+    }
+
+    .html-customer-info-page .iti__country {
+        box-sizing: border-box;
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        align-items: center;
+    }
+
+    .html-customer-info-page .iti__country-name,
+    .html-customer-info-page .iti__dial-code {
+        display: inline;
+        font-size: 14px;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+
+    .html-customer-info-page input[type="text"].iti__search-input {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        min-height: 32px;
+        height: 32px;
+        margin: 0;
+        border-bottom-width: 1px;
+        padding-left: 10px;
+        background: #fff;
+        color: #30363c;
+        font-size: 14px;
+        line-height: 1.2;
+        text-align: left;
+    }
+
+    .html-customer-info-page input[type="text"].iti__search-input::placeholder {
+        color: #626970;
+        opacity: 1;
+    }
+</style>
+
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = CustomerNavigationEnum.Info })
+}
+
+<div class="page account-page customer-info-page jb-account-content">
+    <div class="page-title">
+        <h1>@T("Account.MyAccount") - @T("Account.CustomerInfo")</h1>
+    </div>
+    <div class="page-body">
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CustomerInfoTop, additionalData = Model })
+        <form asp-route="@NopRouteNames.General.CUSTOMER_INFO" method="post">
+            <div asp-validation-summary="ModelOnly" class="message-error"></div>
+            <section class="fieldset jb-account-panel">
+                <h2 class="title">@T("Account.YourPersonalDetails")</h2>
+                <div class="form-fields">
+                    @if (Model.FirstNameEnabled)
+                    {
+                        <div class="inputs">
+                            <label asp-for="FirstName" asp-postfix=":"></label>
+                            <input asp-for="FirstName" />
+                            @if (Model.FirstNameRequired) { <nop-required /> }
+                            <span asp-validation-for="FirstName"></span>
+                        </div>
+                    }
+                    @if (Model.LastNameEnabled)
+                    {
+                        <div class="inputs">
+                            <label asp-for="LastName" asp-postfix=":"></label>
+                            <input asp-for="LastName" />
+                            @if (Model.LastNameRequired) { <nop-required /> }
+                            <span asp-validation-for="LastName"></span>
+                        </div>
+                    }
+                    <div class="inputs">
+                        <label asp-for="Email" asp-postfix=":"></label>
+                        <input asp-for="Email" />
+                        <nop-required />
+                        <span asp-validation-for="Email"></span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.EmailToRevalidate))
+                    {
+                        <div class="inputs">
+                            <label asp-for="EmailToRevalidate"></label>
+                            <span class="email-to-revalidate">@Model.EmailToRevalidate</span>
+                            <span class="email-to-revalidate-note"><em>@T("Account.Fields.EmailToRevalidate.Note")</em></span>
+                        </div>
+                    }
+                    @if (Model.UsernamesEnabled)
+                    {
+                        if (Model.AllowUsersToChangeUsernames)
+                        {
+                            <div class="inputs">
+                                <label asp-for="Username" asp-postfix=":"></label>
+                                <input asp-for="Username" />
+                                <nop-required />
+                                <span asp-validation-for="Username"></span>
+                                @if (Model.CheckUsernameAvailabilityEnabled)
+                                {
+                                    @await Html.PartialAsync("_CheckUsernameAvailability")
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="inputs">
+                                <label asp-for="Username" asp-postfix=":"></label>
+                                <span class="readonly-username">@Model.Username</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </section>
+            @if (Model.PhoneEnabled)
+            {
+                <section class="fieldset jb-account-panel">
+                    <h2 class="title">@T("Account.YourContactInformation")</h2>
+                    <div class="form-fields">
+                        @if (Model.PhoneEnabled)
+                        {
+                            <div class="inputs">
+                                <label asp-for="Phone" asp-postfix=":"></label>
+                                <input asp-for="Phone" type="tel" placeholder="@T("PhoneVerification.Placeholder")" />
+                                @if (Model.PhoneRequired) { <nop-required /> }
+                                <span asp-validation-for="Phone"></span>
+                                @if (!Model.PhoneSmsVerified)
+                                {
+                                    <span class="phone-status">@T("Account.Fields.Phone.Status.NotVerified")</span>
+                                }
+                            </div>
+                            @if (Model.LoginByPhoneEnabled && !Model.PhoneSmsVerified)
+                            {
+                                <div class="buttons">
+                                    <button type="button" class="button-1 change-phone-btn" id="change-phone-btn" onclick="location.href='@Url.RouteUrl(NopRouteNames.Standard.OTP_PHONE_VERIFICATION, new { typeId = (int)PhoneVerificationFlowEnum.ChangePhoneNumber })'">@T("Account.CustomerInfo.VerifyPhoneNumber")</button>
+                                </div>
+                            }
+                        }
+                    </div>
+                </section>
+            }
+
+            @if (!hideCustomAttributesForVendor && Model.CustomerAttributes.Count > 0)
+            {
+                <section class="fieldset jb-account-panel">
+                    <h2 class="title">@T("Account.Options")</h2>
+                    <div class="form-fields">
+                        @await Html.PartialAsync("_CustomerAttributes", Model.CustomerAttributes)
+                    </div>
+                </section>
+            }
+
+            @if (Model.NewsletterEnabled && Model.NewsLetterSubscriptions.Count > 0)
+            {
+                <section class="fieldset jb-account-panel">
+                    <h2 class="title">@T("Account.SubscribeToNewsletter")</h2>
+                    <div class="form-fields">
+                        <div class="inputs">
+                            <div class="attributes">
+                                <ul>
+                                    @for (int i = 0; i < Model.NewsLetterSubscriptions.Count; i++)
+                                    {
+                                        <li>
+                                            <label for="@Html.IdFor(m => m.NewsLetterSubscriptions[i].IsActive)">@Model.NewsLetterSubscriptions[i].Name</label>
+                                            <input type="hidden" asp-for="NewsLetterSubscriptions[i].TypeId" />
+                                            <input class="form-check-input" type="checkbox" asp-for="NewsLetterSubscriptions[i].IsActive" />
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            }
+
+            @if (Model.NumberOfExternalAuthenticationProviders > 0)
+            {
+                <section class="fieldset jb-account-panel">
+                    <h2 class="title">@T("Account.AssociatedExternalAuth")</h2>
+                    @if (Model.AssociatedExternalAuthRecords.Count > 0)
+                    {
+                        <div class="table-wrapper jb-account-table">
+                            <table class="data-table">
+                                <colgroup><col /><col /><col /></colgroup>
+                                <thead>
+                                    <tr>
+                                        <th class="auth-method-name">@T("Account.AssociatedExternalAuth.AuthMethodName")</th>
+                                        <th class="email">@T("Account.AssociatedExternalAuth.Email")</th>
+                                        <th class="external-id">@T("Account.AssociatedExternalAuth.ExternalIdentifier")</th>
+                                        @if (Model.AllowCustomersToRemoveAssociations)
+                                        {
+                                            <th class="remove">@T("Account.AssociatedExternalAuth.Remove")</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.AssociatedExternalAuthRecords)
+                                    {
+                                        <tr>
+                                            <td class="auth-method-name">@item.AuthMethodName</td>
+                                            <td class="email">@item.Email</td>
+                                            <td class="external-id">@CommonHelper.EnsureMaximumLength(item.ExternalIdentifier, 40, "...")</td>
+                                            @if (Model.AllowCustomersToRemoveAssociations)
+                                            {
+                                                <td class="remove"><a href="#" onclick="return removeexternalassociation(@item.Id)">@T("Account.AssociatedExternalAuth.Remove")</a></td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    @if (Model.NumberOfExternalAuthenticationProviders > Model.AssociatedExternalAuthRecords.Count)
+                    {
+                        var loginUrl = Url.RouteUrl(NopRouteNames.General.LOGIN, null, webHelper.GetCurrentRequestProtocol());
+                        <div class="form-fields add-more-external-records">
+                            @T("Account.AssociatedExternalAuth.AddMoreRecords")
+                            <a href="@loginUrl">@loginUrl</a>
+                        </div>
+                    }
+                </section>
+            }
+
+            @if (Model.GdprConsents.Count > 0)
+            {
+                <section class="fieldset jb-account-panel">
+                    <h2 class="title">@T("Account.UserAgreement")</h2>
+                    <div class="form-fields">
+                        @foreach (var consent in Model.GdprConsents)
+                        {
+                            if (consent.IsRequired)
+                            {
+                                <script asp-location="Footer">
+                                    $(function() {
+                                        $('#save-info-button').on('click', function() {
+                                            if ($('#consent@(consent.Id)').is(':checked')) {
+                                                return true;
+                                            }
+                                            alert('@Html.Raw(JavaScriptEncoder.Default.Encode(consent.RequiredMessage))');
+                                            return false;
+                                        });
+                                    });
+                                </script>
+                            }
+                            <div class="inputs accept-consent">
+                                <input id="consent@(consent.Id)" type="checkbox" name="consent@(consent.Id)" checked="@consent.Accepted" />
+                                <label for="consent@(consent.Id)">@consent.Message</label>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            <section class="buttons jb-account-actions">
+                <button type="submit" id="save-info-button" name="save-info-button" class="button-1 save-customer-info-button">@T("Common.Save")</button>
+            </section>
+        </form>
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.CustomerInfoBottom, additionalData = Model })
+    </div>
+</div>
+
+<script asp-location="Footer">
+    function removeexternalassociation(itemId) {
+        if (confirm('@T("Common.AreYouSure")')) {
+            var postData = { id: itemId };
+            addAntiForgeryToken(postData);
+            $.ajax({
+                cache: false,
+                type: "POST",
+                url: "@Url.RouteUrl(NopRouteNames.Ajax.CUSTOMER_REMOVE_EXTERNAL_ASSOCIATION)",
+                data: postData,
+                dataType: "json",
+                success: function (data) {
+                    location.href = data.redirect;
+                },
+                error: function () {
+                    alert('Failed to delete');
+                }
+            });
+        }
+        return false;
+    }
+</script>
+
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('@Html.IdFor(m => m.Phone)');
+        if (!input || !window.intlTelInput) {
+            return;
+        }
+
+        const phoneInput = window.intlTelInput(input, {
+            initialCountry: 'in',
+            strictMode: true,
+            countryOrder: ['in', 'us', 'ca', 'au', 'gb'],
+            preferredCountries: ['in', 'us', 'ca', 'au', 'gb'],
+            separateDialCode: true,
+            showSelectedDialCode: true,
+            nationalMode: true,
+            formatOnDisplay: false,
+            loadUtilsOnInit: 'https://cdn.jsdelivr.net/npm/intl-tel-input@24.7.0/build/js/utils.js'
+        });
+
+        const form = input.closest('form');
+        if (!form) {
+            return;
+        }
+
+        form.addEventListener('submit', function () {
+            const number = phoneInput.getNumber();
+            if (number) {
+                input.value = number;
+            }
+        });
+    });
+</script>

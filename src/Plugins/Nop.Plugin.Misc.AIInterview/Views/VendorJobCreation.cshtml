@@ -1,0 +1,768 @@
+@using Nop.Web.Models.Customer
+@model VendorJobModel
+@{
+    Layout = "_ColumnsTwo";
+    var pageTitle = Model.IsEditMode
+        ? T("Plugins.Misc.AIInterview.VendorJobCreation.EditTitle").Text
+        : T("Plugins.Misc.AIInterview.VendorJobCreation.Title").Text;
+    var submitText = Model.IsEditMode
+        ? T("Plugins.Misc.AIInterview.VendorJobCreation.SubmitEdit").Text
+        : T("Plugins.Misc.AIInterview.VendorJobCreation.Submit").Text;
+    var backToJobsUrl = Url.RouteUrl(AIInterviewDefaults.EmployerDashboardRouteName, new { tab = AIInterviewDefaults.EmployerDashboardJobsTabKey });
+    var roleOverviewText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.RoleOverview").Text;
+    var requirementsText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.Requirements").Text;
+    var jobContentText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.JobContent").Text;
+    var interviewSettingsText = T("Plugins.Misc.AIInterview.VendorJobCreation.Section.InterviewSettings").Text;
+    var applyUntilMin = DateTime.UtcNow.Date.ToString("yyyy-MM-dd");
+    var applyUntilMax = DateTime.UtcNow.Date.AddDays(60).ToString("yyyy-MM-dd");
+    NopHtml.AddTitleParts(pageTitle);
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-vendor-job-creation-page");
+
+    IEnumerable<IGrouping<string, Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> BuildSalaryGroups()
+    {
+        static decimal ParseLpaText(string text)
+        {
+            var normalized = (text ?? string.Empty).Replace("LPA", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
+            return decimal.TryParse(normalized, out var value) ? value : -1m;
+        }
+
+        static string ResolveGroupLabel(decimal lpa)
+        {
+            if (lpa < 0m)
+                return "Select";
+            if (lpa <= 15m)
+                return "Common range: 0-15 LPA";
+            if (lpa <= 30m)
+                return "Growth range: 15.5-30 LPA";
+            if (lpa <= 60m)
+                return "Senior range: 32-60 LPA";
+
+            return "Leadership range: 65-100 LPA";
+        }
+
+        return Model.AvailableSalaryLpaOptions.GroupBy(option => ResolveGroupLabel(ParseLpaText(option.Text)));
+    }
+
+    var salaryGroups = BuildSalaryGroups().ToList();
+    var questionSetsJson = System.Text.Json.JsonSerializer.Serialize(Model.AvailableQuestionSets,
+        new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+}
+
+<link rel="stylesheet" href="~/lib_npm/admin-lte/plugins/select2/css/select2.min.css" />
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.EmployerDashboardNavigationTab })
+}
+
+<div class="page vendor-job-creation-page">
+        <div class="page-title">
+            <div class="vendor-job-page-header">
+                <div class="vendor-job-page-heading">
+                    <h1>@pageTitle</h1>
+                    <p class="vendor-job-page-subtitle">Keep job setup fast and consistent for repeated employer publishing.</p>
+                </div>
+                <div class="vendor-job-page-tools">
+                    <a class="button-2 vendor-job-page-link" href="@backToJobsUrl" title="@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")">@T("Plugins.Misc.AIInterview.VendorJobCreation.BackToJobs")</a>
+                @if (Model.IsEditMode && !string.IsNullOrWhiteSpace(Model.PublicJobUrl))
+                {
+                    <a class="button-2 vendor-job-page-link" href="@Model.PublicJobUrl" target="_blank" rel="noopener"
+                       title="@T("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob")">@T("Plugins.Misc.AIInterview.VendorJobCreation.ViewJob")</a>
+                    <button type="button"
+                            class="button-2 ai-copy-share-link ai-icon-action"
+                            data-share-url="@Model.PublicJobUrl"
+                            aria-label="@T("Plugins.Misc.AIInterview.Employer.Jobs.CopyLink")"
+                            title="@T("Plugins.Misc.AIInterview.Employer.Jobs.CopyLink")">
+                        <i class="fa-solid fa-copy ai-copy-default-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-check ai-copy-success-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-xmark ai-copy-error-icon" aria-hidden="true"></i>
+                        <span class="sr-only">@T("Plugins.Misc.AIInterview.Employer.Jobs.CopyLink")</span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="page-body">
+        <div class="section">
+            <div class="vendor-job-page-section">
+                <form asp-action="@(Model.IsEditMode ? "VendorJobEdit" : "VendorJobCreation")"
+                      asp-route-productId="@(Model.IsEditMode ? Model.Id : (int?)null)"
+                      method="post"
+                      class="vendor-job-form-shell">
+                    <input asp-for="Id" type="hidden" />
+                    <input asp-for="IsEditMode" type="hidden" />
+                    <input asp-for="Sku" type="hidden" />
+                    <div class="fieldset">
+                        <div class="vendor-job-posting-shell">
+                            <div asp-validation-summary="ModelOnly" class="message-error"></div>
+
+                        <section class="vendor-job-form-section">
+                            <div class="vendor-job-form-section-heading">
+                                <h3 class="vendor-job-form-section-title">@roleOverviewText</h3>
+                                <p class="vendor-job-form-section-copy">Set the role name candidates will see across the dashboard and public listing.</p>
+                            </div>
+                            <div class="vendor-job-form-simple-grid">
+                                <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                    <label asp-for="Name" asp-postfix=":"></label>
+                                    <nop-required />
+                                    <input asp-for="Name" />
+                                    <span asp-validation-for="Name"></span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="vendor-job-form-section">
+                            <div class="vendor-job-form-section-heading">
+                                <h3 class="vendor-job-form-section-title">@requirementsText</h3>
+                                <p class="vendor-job-form-section-copy">Choose the core hiring criteria, salary band, and location details for this opening.</p>
+                            </div>
+                            <div class="vendor-job-form-simple-grid">
+                                <div class="vendor-job-form-field vendor-job-form-field-salary">
+                                    <label asp-for="SalaryMinCtcPa" asp-postfix=":"></label>
+                                    <select asp-for="SalaryMinCtcPa">
+                                        @foreach (var group in salaryGroups)
+                                        {
+                                            if (string.Equals(group.Key, "Select", StringComparison.Ordinal))
+                                            {
+                                                foreach (var option in group)
+                                                {
+                                                    <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <optgroup label="@group.Key">
+                                                    @foreach (var option in group)
+                                                    {
+                                                        <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+                                    </select>
+                                    <span class="vendor-job-form-hint">Half-LPA steps are kept in the most common ranges; higher bands are compressed for faster scanning.</span>
+                                    <span asp-validation-for="SalaryMinCtcPa"></span>
+                                </div>
+                                <div class="vendor-job-form-field vendor-job-form-field-salary">
+                                    <label asp-for="SalaryMaxCtcPa" asp-postfix=":"></label>
+                                    <select asp-for="SalaryMaxCtcPa">
+                                        @foreach (var group in salaryGroups)
+                                        {
+                                            if (string.Equals(group.Key, "Select", StringComparison.Ordinal))
+                                            {
+                                                foreach (var option in group)
+                                                {
+                                                    <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <optgroup label="@group.Key">
+                                                    @foreach (var option in group)
+                                                    {
+                                                        <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+                                    </select>
+                                    <span class="vendor-job-form-hint">Choose the ceiling candidates should expect to see on the published role.</span>
+                                    <span asp-validation-for="SalaryMaxCtcPa"></span>
+                                </div>
+                                @if (Model.AvailableExperienceLevels.Any())
+                                {
+                                    <div class="vendor-job-form-field">
+                                        <label asp-for="ExperienceLevelOptionId" asp-postfix=":"></label>
+                                        <select asp-for="ExperienceLevelOptionId" asp-items="Model.AvailableExperienceLevels"></select>
+                                        <span asp-validation-for="ExperienceLevelOptionId"></span>
+                                    </div>
+                                }
+
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="NumberOfPositions" asp-postfix=":"></label>
+                                    <input asp-for="NumberOfPositions" type="number" min="1" step="1" />
+                                    <span asp-validation-for="NumberOfPositions"></span>
+                                </div>
+
+                                @if (Model.AvailableWorkModes.Any())
+                                {
+                                    <div class="vendor-job-form-field">
+                                        <label asp-for="WorkModeOptionId" asp-postfix=":"></label>
+                                        <select asp-for="WorkModeOptionId" asp-items="Model.AvailableWorkModes"></select>
+                                        <span asp-validation-for="WorkModeOptionId"></span>
+                                    </div>
+                                }
+
+                                @if (Model.AvailableEmploymentTypes.Any())
+                                {
+                                    <div class="vendor-job-form-field">
+                                        <label asp-for="EmploymentTypeOptionId" asp-postfix=":"></label>
+                                        <select asp-for="EmploymentTypeOptionId" asp-items="Model.AvailableEmploymentTypes"></select>
+                                        <span asp-validation-for="EmploymentTypeOptionId"></span>
+                                    </div>
+                                }
+
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="JobLocationOptionId" asp-postfix=":"></label>
+                                    @if (Model.AvailableJobLocations.Any())
+                                    {
+                                        <select asp-for="JobLocationOptionId" asp-items="Model.AvailableJobLocations"></select>
+                                    }
+                                    else
+                                    {
+                                        <div class="vendor-job-form-unsupported">@T("Plugins.Misc.AIInterview.VendorJobCreation.JobLocation.Unsupported")</div>
+                                    }
+                                    <span asp-validation-for="JobLocationOptionId"></span>
+                                </div>
+
+                                <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                    <label asp-for="SelectedSkills" asp-postfix=":"></label>
+                                    <select asp-for="SelectedSkills" asp-items="Model.AvailableSkills" multiple class="vendor-job-skills-select"></select>
+                                    <span class="vendor-job-form-hint">@T("Plugins.Misc.AIInterview.VendorJobCreation.Skills.Hint")</span>
+                                    <span asp-validation-for="SelectedSkills"></span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="vendor-job-form-section">
+                            <div class="vendor-job-form-section-heading">
+                                <h3 class="vendor-job-form-section-title">@jobContentText</h3>
+                                <p class="vendor-job-form-section-copy">Use the short description for scannability and the full description for responsibilities and expectations.</p>
+                            </div>
+                            <div class="vendor-job-form-simple-grid">
+                                <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                    <label asp-for="ShortDescription" asp-postfix=":"></label>
+                                    <textarea asp-for="ShortDescription" rows="2"></textarea>
+                                    <span asp-validation-for="ShortDescription"></span>
+                                </div>
+
+                                <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                    <label asp-for="FullDescription" asp-postfix=":"></label>
+                                    @if (Model.AiDescriptionGenerationAvailable)
+                                    {
+                                        <button type="button"
+                                                class="vendor-job-form-ai-generate-button"
+                                                id="open-ai-description-modal"
+                                                title="@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.GenerateButton")">
+                                            <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                                            <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.GenerateButton")</span>
+                                        </button>
+                                    }
+                                    <textarea asp-for="FullDescription" rows="8"></textarea>
+                                    <span asp-validation-for="FullDescription"></span>
+                                </div>
+
+                                @if (Model.AiDescriptionGenerationAvailable)
+                                {
+                                    <div class="vendor-job-form-ai-modal-backdrop" id="ai-description-modal-backdrop" hidden>
+                                        <div class="vendor-job-form-ai-modal" role="dialog" aria-modal="true">
+                                            <div class="vendor-job-form-ai-modal-header">
+                                                <h3>@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.ModalTitle")</h3>
+                                                <button type="button" class="vendor-job-form-ai-modal-close" id="close-ai-description-modal">&times;</button>
+                                            </div>
+                                            <div class="vendor-job-form-ai-modal-body">
+                                                <p class="vendor-job-form-ai-modal-error" id="ai-description-error" hidden></p>
+                                                <div class="vendor-job-form-field">
+                                                    <label for="ai-description-keywords">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Keywords")</label>
+                                                    <textarea id="ai-description-keywords" rows="3"></textarea>
+                                                </div>
+                                                <div class="vendor-job-form-field">
+                                                    <label for="ai-description-tone">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Tone")</label>
+                                                    <select id="ai-description-tone">
+                                                        <option value="0">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Tone.Expert")</option>
+                                                        <option value="1">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Tone.Supportive")</option>
+                                                        <option value="2">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Tone.Custom")</option>
+                                                    </select>
+                                                </div>
+                                                <div class="vendor-job-form-field" id="ai-description-custom-tone-field" hidden>
+                                                    <label for="ai-description-custom-tone">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.CustomTone")</label>
+                                                    <input id="ai-description-custom-tone" type="text" />
+                                                </div>
+                                                <div class="vendor-job-form-field">
+                                                    <label for="ai-description-instructions">@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Instructions")</label>
+                                                    <textarea id="ai-description-instructions" rows="2"></textarea>
+                                                </div>
+                                                <div class="vendor-job-form-field">
+                                                    <button type="button" class="job-ai-action job-ai-action-secondary" id="generate-ai-description-button">
+                                                        @T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Generate")
+                                                    </button>
+                                                </div>
+                                                <div class="vendor-job-form-field" id="ai-description-preview-field" hidden>
+                                                    <label>@T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Preview")</label>
+                                                    <div class="vendor-job-form-ai-preview" id="ai-description-preview"></div>
+                                                </div>
+                                            </div>
+                                            <div class="vendor-job-form-ai-modal-footer">
+                                                <button type="button" class="job-ai-action job-ai-action-secondary" id="cancel-ai-description-button">
+                                                    @T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Cancel")
+                                                </button>
+                                                <button type="button" class="job-ai-action job-ai-action-primary" id="use-ai-description-button" hidden>
+                                                    @T("Plugins.Misc.AIInterview.VendorJobCreation.AiDescription.Use")
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </section>
+
+                        <section class="vendor-job-form-section">
+                            <div class="vendor-job-form-section-heading">
+                                <h3 class="vendor-job-form-section-title">@interviewSettingsText</h3>
+                                <p class="vendor-job-form-section-copy">Choose how interview questions are prepared and keep reusable employer question sets organized.</p>
+                            </div>
+                            <input asp-for="ResumeRequired" type="hidden" />
+                            <div class="vendor-job-form-simple-grid vendor-job-form-interview-grid">
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="InterviewMode" asp-postfix=":"></label>
+                                    <select asp-for="InterviewMode" data-interview-mode="true">
+                                        <option value="@AIInterviewDefaults.InterviewModeAiResumeBased">@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewMode.AiResumeBased")</option>
+                                        <option value="@AIInterviewDefaults.InterviewModeFixedQuestionBased">@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewMode.FixedQuestionBased")</option>
+                                    </select>
+                                    <span asp-validation-for="InterviewMode"></span>
+                                </div>
+                                <div class="vendor-job-form-field">
+                                    <label asp-for="ApplyUntilUtc" asp-postfix=":"></label>
+                                    <input asp-for="ApplyUntilUtc" type="date" min="@applyUntilMin" max="@applyUntilMax" />
+                                    <span asp-validation-for="ApplyUntilUtc"></span>
+                                </div>
+                                <div class="vendor-job-form-field">
+                                    <label class="vendor-job-form-field-label">@T("Plugins.Misc.AIInterview.VendorJobCreation.Published")</label>
+                                    <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.Published)">
+                                        <input type="checkbox"
+                                               id="@Html.IdFor(model => model.Published)"
+                                               name="@Html.NameFor(model => model.Published)"
+                                               value="true"
+                                               checked="@(Model.Published ? "checked" : null)" />
+                                        <input type="hidden" name="@Html.NameFor(model => model.Published)" value="false" />
+                                        <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.Published")</span>
+                                    </label>
+                                </div>
+                                <div class="vendor-job-form-field">
+                                    <label class="vendor-job-form-field-label">@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</label>
+                                    <label class="vendor-job-form-toggle" for="@Html.IdFor(model => model.InterviewRequired)">
+                                        <input type="checkbox"
+                                               id="@Html.IdFor(model => model.InterviewRequired)"
+                                               name="@Html.NameFor(model => model.InterviewRequired)"
+                                               value="true"
+                                               checked="@(Model.InterviewRequired ? "checked" : null)" />
+                                        <input type="hidden" name="@Html.NameFor(model => model.InterviewRequired)" value="false" />
+                                        <span>@T("Plugins.Misc.AIInterview.VendorJobCreation.InterviewRequired")</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="vendor-fixed-question-panel" data-fixed-question-panel="true" hidden>
+                                <div class="vendor-job-form-simple-grid">
+                                    <div class="vendor-job-form-field">
+                                        <label for="QuestionSetWorkflow">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.Action")</label>
+                                        <select asp-for="QuestionSetWorkflow" data-question-set-workflow="true">
+                                            <option value="@AIInterviewDefaults.QuestionSetWorkflowExisting">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.ChooseExisting")</option>
+                                            <option value="@AIInterviewDefaults.QuestionSetWorkflowCreate">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.CreateNew")</option>
+                                            <option value="@AIInterviewDefaults.QuestionSetWorkflowClone">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.CloneExisting")</option>
+                                        </select>
+                                        <span asp-validation-for="QuestionSetWorkflow"></span>
+                                    </div>
+                                    <div class="vendor-job-form-field" data-question-set-selector="true">
+                                        <label asp-for="QuestionSetId" asp-postfix=":"></label>
+                                        <select asp-for="QuestionSetId" data-question-set-id="true">
+                                            <option value="0">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionSet.Select")</option>
+                                            @foreach (var set in Model.AvailableQuestionSets)
+                                            {
+                                                <option value="@set.Id">@set.Name</option>
+                                            }
+                                        </select>
+                                        <span asp-validation-for="QuestionSetId"></span>
+                                    </div>
+                                    <div class="vendor-job-form-field vendor-job-form-field-wide">
+                                        <label asp-for="QuestionSetName" asp-postfix=":"></label>
+                                        <input asp-for="QuestionSetName" data-question-set-name="true" maxlength="300" />
+                                        <span asp-validation-for="QuestionSetName"></span>
+                                    </div>
+                                </div>
+
+                                <div class="vendor-question-editor" data-question-editor="true">
+                                    <div class="vendor-question-editor-heading">
+                                        <div>
+                                            <h4>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems")</h4>
+                                            <p>@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems.Hint")</p>
+                                        </div>
+                                        <button type="button" class="button-2" data-add-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Add")</button>
+                                    </div>
+                                    <p class="vendor-question-readonly-note" data-existing-set-note="true" hidden>
+                                        @T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItems.ExistingReadOnly")
+                                    </p>
+                                    <div class="vendor-question-list" data-question-list="true">
+                                        @for (var index = 0; index < Model.QuestionItems.Count; index++)
+                                        {
+                                            var item = Model.QuestionItems[index];
+                                            <article class="vendor-question-item" draggable="true" data-question-item="true">
+                                                <input asp-for="QuestionItems[index].Id" type="hidden" data-item-id="true" />
+                                                <input asp-for="QuestionItems[index].SequenceNumber" type="hidden" data-sequence="true" />
+                                                <input asp-for="QuestionItems[index].IsActive" type="hidden" value="true" data-active="true" />
+                                                <div class="vendor-question-item-header">
+                                                    <button type="button" class="vendor-question-drag" data-drag-handle="true" aria-label="@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Move")">&#x2630;</button>
+                                                    <strong data-question-number="true">@(index + 1)</strong>
+                                                    <button type="button" class="vendor-question-remove" data-remove-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Remove")</button>
+                                                </div>
+                                                <label asp-for="QuestionItems[index].QuestionText" data-question-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Text")</label>
+                                                <textarea asp-for="QuestionItems[index].QuestionText" rows="3" maxlength="2000" data-question-text="true"></textarea>
+                                                <div class="vendor-question-notes-grid">
+                                                    <div>
+                                                        <label asp-for="QuestionItems[index].RubricHint" data-rubric-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.RubricHint")</label>
+                                                        <textarea asp-for="QuestionItems[index].RubricHint" rows="2" maxlength="2000" data-rubric-hint="true"></textarea>
+                                                    </div>
+                                                    <div>
+                                                        <label asp-for="QuestionItems[index].ExpectedSignalNotes" data-signals-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.ExpectedSignals")</label>
+                                                        <textarea asp-for="QuestionItems[index].ExpectedSignalNotes" rows="2" maxlength="2000" data-expected-signals="true"></textarea>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        }
+                                    </div>
+                                    <span asp-validation-for="QuestionItems"></span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="vendor-job-form-actions">
+                            <button type="submit" class="button-1 vendor-job-submit" title="@submitText">@submitText</button>
+                        </div>
+                    </div>
+                </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script asp-location="Footer" src="~/lib_npm/admin-lte/plugins/select2/js/select2.full.min.js"></script>
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.select2)
+            return;
+
+        jQuery('.vendor-job-skills-select').select2({
+            tags: true,
+            containerCssClass: 'ai-skills-select2',
+            dropdownCssClass: 'ai-skills-select2-dropdown',
+            width: '100%',
+            placeholder: '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(T("Plugins.Misc.AIInterview.VendorJobCreation.Skills.Placeholder").Text)',
+            createTag: function (params) {
+                var term = jQuery.trim(params.term);
+                if (!term)
+                    return null;
+
+                return {
+                    id: term,
+                    text: term,
+                    newTag: true
+                };
+            }
+        });
+    });
+</script>
+
+<script asp-location="Footer">
+    (() => {
+        const form = document.querySelector('.vendor-job-form-shell');
+        if (!form)
+            return;
+
+        const fixedMode = '@AIInterviewDefaults.InterviewModeFixedQuestionBased';
+        const existingWorkflow = '@AIInterviewDefaults.QuestionSetWorkflowExisting';
+        const createWorkflow = '@AIInterviewDefaults.QuestionSetWorkflowCreate';
+        const modeSelect = form.querySelector('[data-interview-mode="true"]');
+        const workflowSelect = form.querySelector('[data-question-set-workflow="true"]');
+        const setSelect = form.querySelector('[data-question-set-id="true"]');
+        const setSelector = form.querySelector('[data-question-set-selector="true"]');
+        const setName = form.querySelector('[data-question-set-name="true"]');
+        const panel = form.querySelector('[data-fixed-question-panel="true"]');
+        const editor = form.querySelector('[data-question-editor="true"]');
+        const list = form.querySelector('[data-question-list="true"]');
+        const addQuestionButton = form.querySelector('[data-add-question="true"]');
+        const existingSetNote = form.querySelector('[data-existing-set-note="true"]');
+        const questionSets = @Html.Raw(questionSetsJson);
+        let draggedItem = null;
+
+        const escapeValue = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+        const questionMarkup = (item = {}) => `
+            <article class="vendor-question-item" draggable="true" data-question-item="true">
+                <input type="hidden" value="${escapeValue(item.id || 0)}" data-item-id="true" />
+                <input type="hidden" value="${escapeValue(item.sequenceNumber || 0)}" data-sequence="true" />
+                <input type="hidden" value="true" data-active="true" />
+                <div class="vendor-question-item-header">
+                    <button type="button" class="vendor-question-drag" data-drag-handle="true" aria-label="@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Move")">&#x2630;</button>
+                    <strong data-question-number="true"></strong>
+                    <button type="button" class="vendor-question-remove" data-remove-question="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Remove")</button>
+                </div>
+                <label data-question-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.Text")</label>
+                <textarea rows="3" maxlength="2000" data-question-text="true">${escapeValue(item.questionText)}</textarea>
+                <div class="vendor-question-notes-grid">
+                    <div><label data-rubric-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.RubricHint")</label><textarea rows="2" maxlength="2000" data-rubric-hint="true">${escapeValue(item.rubricHint)}</textarea></div>
+                    <div><label data-signals-label="true">@T("Plugins.Misc.AIInterview.VendorJobCreation.QuestionItem.ExpectedSignals")</label><textarea rows="2" maxlength="2000" data-expected-signals="true">${escapeValue(item.expectedSignalNotes)}</textarea></div>
+                </div>
+            </article>`;
+
+        const normalize = () => {
+            [...list.querySelectorAll('[data-question-item="true"]')].forEach((item, index) => {
+                const prefix = `QuestionItems[${index}]`;
+                item.querySelector('[data-question-number="true"]').textContent = `${index + 1}.`;
+                item.querySelector('[data-item-id="true"]').name = `${prefix}.Id`;
+                item.querySelector('[data-sequence="true"]').name = `${prefix}.SequenceNumber`;
+                item.querySelector('[data-sequence="true"]').value = index + 1;
+                item.querySelector('[data-active="true"]').name = `${prefix}.IsActive`;
+                const questionText = item.querySelector('[data-question-text="true"]');
+                const rubricHint = item.querySelector('[data-rubric-hint="true"]');
+                const expectedSignals = item.querySelector('[data-expected-signals="true"]');
+                questionText.name = `${prefix}.QuestionText`;
+                questionText.id = `fixed-question-${index}-text`;
+                item.querySelector('[data-question-label="true"]').htmlFor = questionText.id;
+                rubricHint.name = `${prefix}.RubricHint`;
+                rubricHint.id = `fixed-question-${index}-rubric`;
+                item.querySelector('[data-rubric-label="true"]').htmlFor = rubricHint.id;
+                expectedSignals.name = `${prefix}.ExpectedSignalNotes`;
+                expectedSignals.id = `fixed-question-${index}-signals`;
+                item.querySelector('[data-signals-label="true"]').htmlFor = expectedSignals.id;
+            });
+        };
+
+        const loadSet = () => {
+            const selected = questionSets.find(set => String(set.id) === setSelect.value);
+            if (!selected)
+                return;
+            setName.value = workflowSelect.value === existingWorkflow
+                ? selected.name || ''
+                : `${selected.name || ''} - Copy`;
+            list.innerHTML = (selected.items || []).map(questionMarkup).join('');
+            normalize();
+        };
+
+        const updateEditorState = () => {
+            const editable = workflowSelect.value !== existingWorkflow;
+            setName.disabled = !editable;
+            addQuestionButton.disabled = !editable;
+            existingSetNote.hidden = editable;
+            editor.classList.toggle('is-readonly', !editable);
+            list.querySelectorAll('[data-question-item="true"]').forEach(item => {
+                item.draggable = editable;
+                item.setAttribute('aria-disabled', String(!editable));
+                item.querySelectorAll('input, textarea, button').forEach(control => control.disabled = !editable);
+            });
+        };
+
+        const addInitialQuestions = () => {
+            for (let index = 0; index < @AIInterviewDefaults.FixedQuestionCountStandard; index++)
+                list.insertAdjacentHTML('beforeend', questionMarkup());
+        };
+
+        const updateWorkflow = (resetCreate = false) => {
+            const creating = workflowSelect.value === createWorkflow;
+            setSelector.hidden = creating;
+            setSelect.disabled = creating;
+            if (creating) {
+                if (resetCreate) {
+                    setName.value = '';
+                    list.innerHTML = '';
+                }
+                if (!list.querySelector('[data-question-item="true"]'))
+                    addInitialQuestions();
+            }
+            else if (!creating && setSelect.value !== '0')
+                loadSet();
+            normalize();
+            updateEditorState();
+        };
+
+        const updateMode = () => {
+            const fixed = modeSelect.value === fixedMode;
+            panel.hidden = !fixed;
+            panel.querySelectorAll('input, select, textarea, button').forEach(control => control.disabled = !fixed);
+            form.querySelector('[name="ResumeRequired"]').value = fixed ? 'false' : 'true';
+            if (fixed)
+                updateWorkflow();
+        };
+
+        addQuestionButton.addEventListener('click', () => {
+            if (addQuestionButton.disabled || list.querySelectorAll('[data-question-item="true"]').length >= @AIInterviewDefaults.FixedQuestionCountExtended)
+                return;
+            list.insertAdjacentHTML('beforeend', questionMarkup());
+            normalize();
+        });
+        list.addEventListener('click', event => {
+            const removeButton = event.target.closest('[data-remove-question="true"]');
+            if (!removeButton || removeButton.disabled)
+                return;
+            event.target.closest('[data-question-item="true"]').remove();
+            normalize();
+        });
+        list.addEventListener('dragstart', event => {
+            draggedItem = event.target.closest('[data-question-item="true"]');
+            if (draggedItem?.draggable)
+                event.dataTransfer.effectAllowed = 'move';
+            else
+                draggedItem = null;
+        });
+        list.addEventListener('dragover', event => {
+            const target = event.target.closest('[data-question-item="true"]');
+            if (!draggedItem || !target || target === draggedItem)
+                return;
+            event.preventDefault();
+            const bounds = target.getBoundingClientRect();
+            target.parentNode.insertBefore(draggedItem, event.clientY < bounds.top + bounds.height / 2 ? target : target.nextSibling);
+        });
+        list.addEventListener('drop', event => { event.preventDefault(); normalize(); });
+        list.addEventListener('dragend', () => { draggedItem = null; normalize(); });
+        setSelect.addEventListener('change', () => { loadSet(); updateEditorState(); });
+        workflowSelect.addEventListener('change', () => updateWorkflow(true));
+        modeSelect.addEventListener('change', updateMode);
+        form.addEventListener('submit', normalize);
+        updateMode();
+        normalize();
+    })();
+</script>
+
+<script>
+(() => {
+    if (window.__aiInterviewInviteCopyLinkInitialized) {
+        return;
+    }
+    window.__aiInterviewInviteCopyLinkInitialized = true;
+
+    const writeToClipboard = async (text) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = text;
+        input.setAttribute('readonly', 'readonly');
+        input.style.position = 'absolute';
+        input.style.left = '-9999px';
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(input);
+        return copied;
+    };
+
+    document.addEventListener('click', async (event) => {
+        const shareCopyButton = event.target.closest('.ai-copy-share-link');
+        if (!shareCopyButton) {
+            return;
+        }
+
+        event.preventDefault();
+        const shareUrl = shareCopyButton.getAttribute('data-share-url');
+        if (!shareUrl) {
+            return;
+        }
+
+        try {
+            await writeToClipboard(shareUrl);
+            const feedbackRoot = shareCopyButton.closest('.ai-report-share-layout');
+            const copiedText = feedbackRoot?.dataset.copiedText || 'Copied';
+            shareCopyButton.classList.remove('is-error');
+            shareCopyButton.classList.add('is-success');
+            shareCopyButton.setAttribute('title', copiedText);
+            shareCopyButton.setAttribute('aria-label', copiedText);
+        } catch (error) {
+            const feedbackRoot = shareCopyButton.closest('.ai-report-share-layout');
+            const copyFailedText = feedbackRoot?.dataset.copyFailedText || 'Copy failed';
+            shareCopyButton.classList.remove('is-success');
+            shareCopyButton.classList.add('is-error');
+            shareCopyButton.setAttribute('title', copyFailedText);
+            shareCopyButton.setAttribute('aria-label', copyFailedText);
+        }
+    });
+})();
+</script>
+
+<script asp-location="Footer">
+    document.addEventListener('DOMContentLoaded', function () {
+            var openButton = document.getElementById('open-ai-description-modal');
+            var closeButton = document.getElementById('close-ai-description-modal');
+            var cancelButton = document.getElementById('cancel-ai-description-button');
+            var generateButton = document.getElementById('generate-ai-description-button');
+            var useButton = document.getElementById('use-ai-description-button');
+            var backdrop = document.getElementById('ai-description-modal-backdrop');
+            var toneSelect = document.getElementById('ai-description-tone');
+            var customToneField = document.getElementById('ai-description-custom-tone-field');
+            var errorText = document.getElementById('ai-description-error');
+            var previewField = document.getElementById('ai-description-preview-field');
+            var previewBox = document.getElementById('ai-description-preview');
+            var titleInput = document.querySelector('[name="Name"]');
+            var shortDescriptionInput = document.querySelector('[name="ShortDescription"]');
+            var fullDescriptionInput = document.querySelector('[name="FullDescription"]');
+            var keywordsField = document.getElementById('ai-description-keywords');
+
+            if (!openButton || !backdrop) {
+                return;
+            }
+
+            function closeModal() {
+                backdrop.hidden = true;
+            }
+
+            openButton.addEventListener('click', function () {
+                errorText.hidden = true;
+                previewField.hidden = true;
+                useButton.hidden = true;
+                if (!keywordsField.value) {
+                    var titleText = titleInput ? titleInput.value : '';
+                    var summaryText = shortDescriptionInput ? shortDescriptionInput.value : '';
+                    keywordsField.value = [titleText, summaryText].filter(Boolean).join(', ');
+                }
+                backdrop.hidden = false;
+            });
+
+            closeButton.addEventListener('click', closeModal);
+            cancelButton.addEventListener('click', closeModal);
+
+            toneSelect.addEventListener('change', function () {
+                customToneField.hidden = toneSelect.value !== '2';
+            });
+
+            generateButton.addEventListener('click', function () {
+                errorText.hidden = true;
+                var payload = new URLSearchParams();
+                payload.append('JobTitle', titleInput ? titleInput.value : '');
+                payload.append('Keywords', keywordsField.value || '');
+                payload.append('ToneOfVoiceId', toneSelect.value);
+                payload.append('CustomToneOfVoice', document.getElementById('ai-description-custom-tone').value || '');
+                payload.append('Instructions', document.getElementById('ai-description-instructions').value || '');
+
+                fetch('@Url.Action("GenerateJobDescription", "AIInterview")', {
+                    method: 'POST',
+                    body: payload
+                })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        previewBox.textContent = data.description;
+                        previewField.hidden = false;
+                        useButton.hidden = false;
+                    } else {
+                        errorText.textContent = data.message;
+                        errorText.hidden = false;
+                    }
+                })
+                .catch(function () {
+                    errorText.textContent = 'Unable to reach the AI service.';
+                    errorText.hidden = false;
+                });
+            });
+
+            useButton.addEventListener('click', function () {
+                if (fullDescriptionInput) {
+                    fullDescriptionInput.value = previewBox.textContent;
+                }
+                closeModal();
+            });
+    });
+</script>

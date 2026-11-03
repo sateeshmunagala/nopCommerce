@@ -1,0 +1,96 @@
+@{
+    Layout = "_ColumnsTwo";
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-view-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-mock-start-page");
+    var sponsorToken = Context.Request.Query["sponsorToken"].ToString();
+    var productId = Context.Request.Query["productId"].ToString();
+}
+
+@section left
+{
+    @await Component.InvokeAsync("CustomerNavigation", new { selectedTabId = AIInterviewDefaults.MyActivityNavigationTab })
+}
+
+<div class="page mock-start">
+    <div class="page-title">
+        <h1>@T("Plugins.Misc.AIInterview.Index.StartInterview.Title")</h1>
+    </div>
+    <div class="page-body">
+        @if (!string.IsNullOrEmpty(sponsorToken))
+        {
+            <div class="message-error aiinterview-success-message">
+                @T("Plugins.Misc.AIInterview.Runtime.SponsorMessage")
+            </div>
+        }
+        <p>@T("Plugins.Misc.AIInterview.Index.StartInterview.Description")</p>
+        <form id="start-mock-form" asp-action="Start" asp-controller="MockAiInterview" method="post">
+            <input type="hidden" name="productId" value="@productId" />
+            <input type="hidden" name="sponsorToken" value="@sponsorToken" />
+            <label for="difficulty">@T("Plugins.Misc.AIInterview.Index.Difficulty")</label>
+            <select id="difficulty" name="difficulty">
+                <option value="Easy">@T("Plugins.Misc.AIInterview.Difficulty.Easy")</option>
+                <option value="Medium" selected>@T("Plugins.Misc.AIInterview.Difficulty.Medium")</option>
+                <option value="Hard">@T("Plugins.Misc.AIInterview.Difficulty.Hard")</option>
+            </select>
+            <button id="start-mock-btn" type="submit" class="button-1">@T("Plugins.Misc.AIInterview.Index.StartInterview")</button>
+        </form>
+        <div id="start-mock-error" class="message-error aiinterview-hidden"></div>
+    </div>
+</div>
+
+<script asp-location="Footer">
+    (() => {
+        const form = document.getElementById('start-mock-form');
+        const button = document.getElementById('start-mock-btn');
+        const error = document.getElementById('start-mock-error');
+        const safeRequestError = 'Unable to reach the interview service. Please check your network and try again.';
+
+        const setBusy = (isBusy) => {
+            if (button)
+                button.disabled = !!isBusy;
+        };
+
+        const postJson = async (url, formData) => {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok)
+                    return { success: false, error: safeRequestError };
+
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json'))
+                    return { success: false, error: safeRequestError };
+
+                try {
+                    return await response.json();
+                } catch {
+                    return { success: false, error: safeRequestError };
+                }
+            } catch {
+                return { success: false, error: safeRequestError };
+            }
+        };
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            setBusy(true);
+            try {
+                const result = await postJson(this.action, new FormData(this));
+                if (result.runtimeUrl) {
+                    window.location.href = result.runtimeUrl;
+                    return;
+                }
+
+                error.textContent = result.error || result.message || safeRequestError;
+                error.style.display = 'block';
+            } finally {
+                setBusy(false);
+            }
+        });
+    })();
+</script>

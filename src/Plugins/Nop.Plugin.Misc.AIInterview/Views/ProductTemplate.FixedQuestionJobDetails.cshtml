@@ -1,0 +1,51 @@
+@model Nop.Web.Models.Catalog.ProductDetailsModel
+
+@using Nop.Core.Domain.Seo
+@using Nop.Services.Helpers
+@using Nop.Web.Components
+@using Nop.Web.Framework.Infrastructure
+
+@inject IWebHelper webHelper
+@inject SeoSettings seoSettings
+
+@{
+    Layout = "_ColumnsOne";
+
+    NopHtml.AddTitleParts(!string.IsNullOrEmpty(Model.MetaTitle) ? Model.MetaTitle : Model.Name);
+    NopHtml.AddMetaDescriptionParts(Model.MetaDescription);
+    NopHtml.AddMetaKeywordParts(Model.MetaKeywords);
+    NopHtml.AppendPageCssClassParts("html-job-details-page");
+    NopHtml.AppendPageCssClassParts("html-aiinterview-job-details-page");
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.AIInterview/Content/css/aiinterview-public.css");
+
+    if (seoSettings.CanonicalUrlsEnabled)
+    {
+        var productUrl = Url.RouteUrl("Product", new { SeName = Model.SeName }, webHelper.GetCurrentRequestProtocol())?.ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(productUrl))
+            NopHtml.AddCanonicalUrlParts(productUrl, seoSettings.QueryStringInCanonicalUrlsEnabled);
+    }
+
+    NopHtml.AddJsonLdParts(Model.JsonLd);
+}
+
+@section Breadcrumb
+{
+    @await Html.PartialAsync("_ProductBreadcrumb", Model.Breadcrumb)
+}
+
+@await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsAfterBreadcrumb, additionalData = Model })
+
+<div class="page product-details-page job-details-page">
+    <div class="page-body">
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsTop, additionalData = Model })
+        <form asp-route="Product" asp-route-sename="@Model.SeName" method="post" id="product-details-form">
+            @await Html.PartialAsync("~/Plugins/Misc.AIInterview/Views/Shared/_AIInterviewJobDetailsContent.cshtml", Model, new ViewDataDictionary(ViewData)
+            {
+                ["RenderMode"] = "Page",
+                ["ProductFormId"] = "product-details-form",
+                ["JobAiContextId"] = $"job-page-{Model.Id}"
+            })
+        </form>
+        @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ProductDetailsBottom, additionalData = Model })
+    </div>
+</div>

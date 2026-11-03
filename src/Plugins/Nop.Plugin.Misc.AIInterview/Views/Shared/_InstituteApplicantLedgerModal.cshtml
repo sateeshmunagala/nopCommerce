@@ -1,0 +1,111 @@
+@model InstituteApplicantLedgerModalModel
+
+@{
+    var previousPage = Math.Max(1, Model.Page - 1);
+    var nextPage = Math.Min(Model.TotalPages, Model.Page + 1);
+}
+
+<div id="institute-ledger-modal"
+     class="institute-ledger-modal is-open"
+     aria-hidden="false">
+    <div class="institute-ledger-modal-backdrop"></div>
+    <div class="institute-ledger-modal-dialog"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="institute-ledger-modal-title"
+         tabindex="-1">
+        <header class="institute-ledger-modal-header">
+            <div>
+                <h2 id="institute-ledger-modal-title">Applicant Credit History</h2>
+                <p>@Model.ApplicantName <span>@Model.ApplicantEmail</span></p>
+            </div>
+            <button type="button"
+                    class="institute-ledger-modal-close"
+                    aria-label="Close applicant credit history"
+                    onclick="window.closeInstituteLedgerModal && window.closeInstituteLedgerModal();">
+                &times;
+            </button>
+        </header>
+
+        <div class="institute-ledger-summary-grid">
+            <div class="institute-ledger-summary-card">
+                <span>Current Balance</span>
+                <strong>@Model.CurrentBalance.ToString("0.##")</strong>
+            </div>
+            <div class="institute-ledger-summary-card">
+                <span>Total Added</span>
+                <strong>@Model.TotalDeposits.ToString("0.##")</strong>
+            </div>
+            <div class="institute-ledger-summary-card">
+                <span>Total Used</span>
+                <strong>@Model.TotalWithdrawals.ToString("0.##")</strong>
+            </div>
+        </div>
+
+        @if (!Model.Rows.Any())
+        {
+            <p class="institute-ledger-empty">
+                No credit ledger entries are available for this applicant yet.
+            </p>
+        }
+        else
+        {
+            <div class="institute-ledger-table-wrapper">
+                <table class="institute-ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                            <th>Amount</th>
+                            <th>Running Balance</th>
+                            <th>Source</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td data-label="Timestamp">@row.CreatedOnUtc.ToString("dd MMM yyyy, h:mm tt")</td>
+                                <td data-label="Action">@row.Action</td>
+                                <td data-label="Amount" class="@(row.Amount < 0 ? "is-negative" : "is-positive")">
+                                    @($"{row.Amount:+0.##;-0.##;0}")
+                                </td>
+                                <td data-label="Running Balance">@row.RunningBalance.ToString("0.##")</td>
+                                <td data-label="Source">@row.Source</td>
+                                <td data-label="Remarks">@row.Remarks</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <footer class="institute-ledger-modal-actions">
+            <div class="institute-ledger-pagination" aria-label="Applicant credit history pages">
+                <button type="button"
+                        class="button-2"
+                        @(Model.Page <= 1 ? "disabled" : null)
+                        hx-get="@Url.RouteUrl(AIInterviewDefaults.InstituteApplicantLedgerRouteName, new { applicantCustomerId = Model.ApplicantCustomerId, page = previousPage, pageSize = Model.PageSize })"
+                        hx-target="#institute-ledger-modal-host"
+                        hx-swap="innerHTML">
+                    Previous
+                </button>
+                <span>Page @Model.Page of @Model.TotalPages</span>
+                <button type="button"
+                        class="button-2"
+                        @(Model.Page >= Model.TotalPages ? "disabled" : null)
+                        hx-get="@Url.RouteUrl(AIInterviewDefaults.InstituteApplicantLedgerRouteName, new { applicantCustomerId = Model.ApplicantCustomerId, page = nextPage, pageSize = Model.PageSize })"
+                        hx-target="#institute-ledger-modal-host"
+                        hx-swap="innerHTML">
+                    Next
+                </button>
+            </div>
+            <button type="button"
+                    class="button-1"
+                    onclick="window.closeInstituteLedgerModal && window.closeInstituteLedgerModal();">
+                Close
+            </button>
+        </footer>
+    </div>
+</div>
