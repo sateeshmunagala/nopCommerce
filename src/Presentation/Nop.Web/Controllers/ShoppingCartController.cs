@@ -761,7 +761,7 @@ public partial class ShoppingCartController : BasePublicController
                     //redirect to the shopping cart page
                     return Json(new
                     {
-                        redirect = Url.RouteUrl(NopRouteNames.General.CART)
+                        redirect = Url.RouteUrl(NopRouteNames.Standard.CHECKOUT)
                     });
                 }
 
