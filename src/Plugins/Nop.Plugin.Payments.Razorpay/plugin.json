@@ -1,0 +1,11 @@
+{
+  "Group": "Payment methods",
+  "FriendlyName": "Razorpay",
+  "SystemName": "Payments.Razorpay",
+  "Version": "5.00",
+  "SupportedVersions": [ "5.00" ],
+  "Author": "skillFinder team",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Payments.Razorpay.dll",
+  "Description": "This plugin enables Razorpay hosted checkout popup"
+}
