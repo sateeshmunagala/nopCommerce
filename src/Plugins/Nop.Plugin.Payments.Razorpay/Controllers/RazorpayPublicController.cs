@@ -79,19 +79,45 @@ public class RazorpayPublicController : BasePublicController
 
     private async Task LogPaymentMethodSnapshotAsync(Customer customer, int storeId, string stage, string razorpayOrderId)
     {
+        string selectedPaymentMethod;
         try
         {
-            var selectedPaymentMethod = await _genericAttributeService.GetAttributeAsync<string>(
+            selectedPaymentMethod = await _genericAttributeService.GetAttributeAsync<string>(
                 customer,
                 NopCustomerDefaults.SelectedPaymentMethodAttribute,
                 storeId);
+        }
+        catch (Exception exception)
+        {
+            await LogPaymentMethodSnapshotFailureAsync(customer, storeId, stage, "read", exception);
+            return;
+        }
+
+        try
+        {
             var selectedMethodState = GetSelectedPaymentMethodState(selectedPaymentMethod);
-            var logMessage = $"Stage={stage}; StoreId={storeId}; CustomerId={customer.Id}; SelectedMethodState={selectedMethodState}; RazorpayOrderId={MaskRazorpayOrderId(razorpayOrderId)};";
+            var logMessage = $"Stage={stage}; StoreId={storeId}; CustomerId={customer?.Id ?? 0}; SelectedMethodState={selectedMethodState}; RazorpayOrderId={MaskRazorpayOrderId(razorpayOrderId)};";
 
             if (selectedMethodState == "razorpay")
                 await _logger.InformationAsync($"Razorpay checkout payment method snapshot. {logMessage}");
             else
                 await _logger.WarningAsync($"Razorpay checkout payment method snapshot. {logMessage}");
+        }
+        catch (Exception exception)
+        {
+            await LogPaymentMethodSnapshotFailureAsync(customer, storeId, stage, "write", exception);
+        }
+    }
+
+    private async Task LogPaymentMethodSnapshotFailureAsync(Customer customer, int storeId, string stage, string operation, Exception exception)
+    {
+        try
+        {
+            if (_logger == null)
+                return;
+
+            await _logger.WarningAsync(
+                $"Razorpay checkout payment method snapshot failure. Stage={stage}; StoreId={storeId}; CustomerId={customer?.Id ?? 0}; Operation={operation}; FailureType={exception?.GetType().Name ?? "Unknown"};");
         }
         catch
         {

@@ -106,7 +106,7 @@
                         return;
 
                     logErrorToDiagnosticEndpoint(
-                        jqXHR && jqXHR.statusText === 'parsererror'
+                        jqXHR && jqXHR.status >= 200 && jqXHR.status < 300
                             ? 'RazorpayPaymentInfoAjaxUnexpectedResponse'
                             : 'RazorpayPaymentInfoAjaxTransportFailure',
                         '');
