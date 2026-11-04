@@ -226,7 +226,11 @@
                         rzp.on('payment.failed', function (response) {
                             var failedDesc = response.error ? response.error.description : 'Payment failed.';
                             showError(failedDesc);
-                            logErrorToDiagnosticEndpoint("PaymentFailed", "Razorpay payment.failed event fired: " + failedDesc);
+                            logErrorToDiagnosticEndpoint(
+                                "PaymentFailed",
+                                response && response.error && typeof response.error.description === 'string'
+                                    ? response.error.description
+                                    : '');
                             pendingMessage.style.display = 'block';
                         });
                         rzp.open();
@@ -329,6 +333,8 @@
                     safeContext = contextMsg === 'CheckoutLoadWaitingState=active' || contextMsg === 'CheckoutLoadWaitingState=false'
                         ? contextMsg
                         : 'CheckoutLoadWaitingState=unknown';
+                } else if (errorCode === 'PaymentFailed') {
+                    safeContext = typeof contextMsg === 'string' ? contextMsg.slice(0, 2000) : '';
                 }
 
                 var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');

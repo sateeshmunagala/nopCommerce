@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
@@ -19,6 +21,7 @@ namespace Nop.Plugin.Payments.Razorpay.Controllers;
 [AutoValidateAntiforgeryToken]
 public class RazorpayPublicController : BasePublicController
 {
+    private const int MaxPaymentFailureDescriptionLength = 400;
     private const string PopupSuccessHandlerEntryEvent = "RazorpayPopupSuccessHandlerEntry";
     private const string VerifyPaymentResponseSuccessEvent = "RazorpayVerifyPaymentResponseSuccess";
     private const string PaymentInfoSaveInvokedEvent = "RazorpayPaymentInfoSaveInvoked";
@@ -26,6 +29,24 @@ public class RazorpayPublicController : BasePublicController
     private const string PaymentInfoAjaxConfirmSectionSuccessEvent = "RazorpayPaymentInfoAjaxConfirmSectionSuccess";
     private const string PaymentInfoAjaxUnexpectedResponseEvent = "RazorpayPaymentInfoAjaxUnexpectedResponse";
     private const string PaymentInfoAjaxTransportFailureEvent = "RazorpayPaymentInfoAjaxTransportFailure";
+    private static readonly Regex PaymentFailureSensitiveFieldRegex = new(
+        @"(?i)\b(?<key>authorization|api[_ -]?key|token|secret|password|signature|credential|email|e-mail|phone|mobile|contact|name|address|card(?:[_ -]?(?:number|no))?|cvv|cvc|otp|upi|vpa|account(?:[_ -]?(?:number|no))?|customer(?:[_ -]?(?:id|identifier))?|payment(?:[_ -]?(?:id|identifier|reference))?|transaction(?:[_ -]?(?:id|reference))?|order(?:[_ -]?id)?)\b[""']?\s*[:=]\s*[""']?[^,;|}\]]+",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PaymentFailureEmailOrVpaRegex = new(
+        @"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+(?:\.[A-Z]{2,})?\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PaymentFailureNumberRegex = new(
+        @"(?<!\w)\+?\d(?:[\s().-]*\d){6,}(?!\w)",
+        RegexOptions.Compiled);
+    private static readonly Regex PaymentFailureCredentialRegex = new(
+        @"(?i)\bBearer\s+[A-Z0-9._~+/-]+=*|\b(?:rzp_(?:live|test)_|sk_(?:live|test)_)[A-Z0-9]+\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PaymentFailureUrlRegex = new(
+        @"(?i)https?://\S+",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PaymentFailureWhitespaceRegex = new(
+        @"\s+",
+        RegexOptions.Compiled);
 
     private readonly RazorpayHttpClient _razorpayHttpClient;
     private readonly RazorpayPaymentSettings _razorpayPaymentSettings;
@@ -140,6 +161,34 @@ public class RazorpayPublicController : BasePublicController
             "VerifyPaymentException" => "VerifyPaymentException",
             _ => "OtherClientDiagnostic"
         };
+    }
+
+    private static string SanitizePaymentFailureDescription(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return "DescriptionMissing";
+
+        var boundedInput = description.Length > 2000 ? description[..2000] : description;
+        var cleaned = new StringBuilder(boundedInput.Length);
+        foreach (var character in boundedInput)
+            cleaned.Append(char.IsControl(character) ? ' ' : character);
+
+        var sanitized = PaymentFailureWhitespaceRegex.Replace(cleaned.ToString(), " ").Trim();
+        sanitized = PaymentFailureSensitiveFieldRegex.Replace(
+            sanitized,
+            match => $"{match.Groups["key"].Value}=[redacted]");
+        sanitized = PaymentFailureEmailOrVpaRegex.Replace(sanitized, "[redacted-identifier]");
+        sanitized = PaymentFailureNumberRegex.Replace(sanitized, "[redacted-number]");
+        sanitized = PaymentFailureCredentialRegex.Replace(sanitized, "[redacted-credential]");
+        sanitized = PaymentFailureUrlRegex.Replace(sanitized, "[redacted-url]");
+        sanitized = PaymentFailureWhitespaceRegex.Replace(sanitized, " ").Trim();
+
+        if (string.IsNullOrWhiteSpace(sanitized))
+            return "DescriptionMissing";
+
+        return sanitized.Length > MaxPaymentFailureDescriptionLength
+            ? sanitized[..MaxPaymentFailureDescriptionLength]
+            : sanitized;
     }
 
     public RazorpayPublicController(
@@ -360,7 +409,10 @@ public class RazorpayPublicController : BasePublicController
             }
 
             var safeError = NormalizeExistingClientErrorCategory(error);
-            var clientErrorMessage = $"Razorpay Client Error: {safeError}. Context=DetailsOmitted; CustomerId: {customer.Id}, StoreId: {store.Id}";
+            var safeContext = safeError == "PaymentFailed"
+                ? SanitizePaymentFailureDescription(context)
+                : "DetailsOmitted";
+            var clientErrorMessage = $"Razorpay Client Error: {safeError}. Context={safeContext}; CustomerId: {customer.Id}, StoreId: {store.Id}";
             await _logger.WarningAsync(clientErrorMessage);
 
             return Json(new { success = true });
