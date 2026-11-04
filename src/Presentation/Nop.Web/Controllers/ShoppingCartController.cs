@@ -16,6 +16,7 @@ using Nop.Core.Infrastructure;
 using Nop.Services.Attributes;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
+using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Discounts;
@@ -434,7 +435,7 @@ public partial class ShoppingCartController : BasePublicController
                     //redirect to the shopping cart page
                     return Json(new
                     {
-                        redirect = Url.RouteUrl(NopRouteNames.General.CART)
+                        redirect = Url.RouteUrl(NopRouteNames.Standard.CHECKOUT)
                     });
                 }
 
@@ -1399,7 +1400,27 @@ public partial class ShoppingCartController : BasePublicController
                                  && _customerSettings.UserRegistrationType == UserRegistrationType.Disabled;
 
         if (anonymousPermissed || !await _customerService.IsGuestAsync(customer))
+        {
+            var settingService = HttpContext.RequestServices.GetService(typeof(ISettingService)) as ISettingService;
+            if (settingService != null)
+            {
+                var bypassCart = await settingService.GetSettingByKeyAsync(
+                    "singlepagecheckoutsettings.bypasscart",
+                    false,
+                    store.Id,
+                    loadSharedValueIfNotFound: true);
+                var singlePageCheckoutEnabled = await settingService.GetSettingByKeyAsync(
+                    "singlepagecheckoutsettings.enabled",
+                    false,
+                    store.Id,
+                    loadSharedValueIfNotFound: true);
+
+                if (bypassCart && singlePageCheckoutEnabled)
+                    return RedirectToRoute("Plugin.Misc.SinglePageCheckout.Index");
+            }
+
             return RedirectToRoute(NopRouteNames.Standard.CHECKOUT);
+        }
 
         var cartProductIds = cart.Select(ci => ci.ProductId).ToArray();
         var downloadableProductsRequireRegistration =
