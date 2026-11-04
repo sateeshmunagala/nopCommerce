@@ -1,0 +1,9 @@
+@model SinglePageCheckoutPageModel
+
+<div id="spc-summary-fragment">
+    @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_Sidebar.cshtml", Model)
+</div>
+
+<div id="spc-totals-fragment">
+    @await Html.PartialAsync("~/Plugins/Misc.SinglePageCheckout/Views/_Totals.cshtml", Model)
+</div>

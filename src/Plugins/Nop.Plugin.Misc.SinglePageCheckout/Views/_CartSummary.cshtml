@@ -1,0 +1,128 @@
+@model Nop.Web.Models.ShoppingCart.ShoppingCartModel
+@using Nop.Core.Domain.Catalog
+
+@if (Model.Items.Count == 0)
+{
+    <div class="no-data">
+        @T("ShoppingCart.CartIsEmpty")
+    </div>
+}
+else
+{
+    <div class="table-wrapper">
+        <table class="spc-cart-table">
+            <thead>
+                <tr>
+                    <th>@T("ShoppingCart.Product(s)")</th>
+                    <th>@T("ShoppingCart.UnitPrice")</th>
+                    <th>@T("ShoppingCart.Quantity")</th>
+                    <th>@T("ShoppingCart.ItemTotal")</th>
+                    @if (Model.IsEditable)
+                    {
+                        <th>@T("ShoppingCart.Remove")</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td>
+                            <div class="spc-cart-product">
+                                @if (Model.ShowProductImages)
+                                {
+                                    <a href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = item.ProductSeName }))">
+                                        <img src="@item.Picture.ImageUrl" alt="@item.Picture.AlternateText" title="@item.Picture.Title" />
+                                    </a>
+                                }
+                                <div>
+                                    <a class="spc-cart-product-name" href="@(await NopUrl.RouteGenericUrlAsync<Product>(new { SeName = item.ProductSeName }))">
+                                        @item.ProductName
+                                    </a>
+                                    @if (!string.IsNullOrEmpty(item.AttributeInfo))
+                                    {
+                                        <div class="spc-cart-meta">
+                                            @Html.Raw(item.AttributeInfo)
+                                        </div>
+                                    }
+                                    @if (item.Warnings.Any())
+                                    {
+                                        <div class="message-error">
+                                            <ul>
+                                                @foreach (var warning in item.Warnings)
+                                                {
+                                                    <li>@Html.Raw(warning)</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                        <td>@item.UnitPrice</td>
+                        <td>
+                            @if (Model.IsEditable)
+                            {
+                                if (item.AllowedQuantities.Any())
+                                {
+                                    var selectedQuantity = item.AllowedQuantities.FirstOrDefault(qty => qty.Selected)?.Value ?? item.Quantity.ToString();
+                                    <div class="spc-qty-stepper" data-target="itemquantity@(item.Id)" data-display="itemquantitydisplay@(item.Id)">
+                                        <button type="button" class="spc-qty-btn spc-qty-decrease" aria-label="Decrease quantity">-</button>
+                                        <input id="itemquantitydisplay@(item.Id)" type="text" value="@selectedQuantity" class="qty-input spc-qty-display" readonly aria-label="@T("ShoppingCart.Quantity")" />
+                                        <button type="button" class="spc-qty-btn spc-qty-increase" aria-label="Increase quantity">+</button>
+                                        <select name="itemquantity@(item.Id)" id="itemquantity@(item.Id)" class="qty-dropdown spc-qty-source" tabindex="-1" aria-hidden="true">
+                                            @foreach (var qty in item.AllowedQuantities)
+                                            {
+                                                <option selected="@qty.Selected" value="@qty.Value">@qty.Value</option>
+                                            }
+                                        </select>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="spc-qty-stepper" data-target="itemquantity@(item.Id)">
+                                        <button type="button" class="spc-qty-btn spc-qty-decrease" aria-label="Decrease quantity">-</button>
+                                        <input name="itemquantity@(item.Id)" id="itemquantity@(item.Id)" type="text" value="@item.Quantity" class="qty-input" inputmode="numeric" pattern="[0-9]*" readonly aria-label="@T("ShoppingCart.Quantity")" />
+                                        <button type="button" class="spc-qty-btn spc-qty-increase" aria-label="Increase quantity">+</button>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <span>@item.Quantity</span>
+                            }
+                        </td>
+                        <td>
+                            @item.SubTotal
+                            @if (!string.IsNullOrEmpty(item.Discount))
+                            {
+                                <div class="spc-cart-meta">
+                                    @T("ShoppingCart.ItemYouSave", item.Discount)
+                                </div>
+                            }
+                        </td>
+                        @if (Model.IsEditable)
+                        {
+                            <td>
+                                @if (!item.DisableRemoval)
+                                {
+                                    <input type="checkbox" name="removefromcart" id="removefromcart@(item.Id)" value="@item.Id" style="display:none;" />
+                                    <button type="button" class="remove-btn" onclick="$('#removefromcart@(item.Id)').prop('checked', true); $('#updatecart').trigger('click');" aria-label="@T("ShoppingCart.Remove")" title="@T("ShoppingCart.Remove")">
+                                        <svg class="remove-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                                            <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 7h2v7h-2v-7Zm4 0h2v7h-2v-7ZM7 10h2v7H7v-7Zm-1 10h12l1-12H5l1 12Z" />
+                                        </svg>
+                                    </button>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.IsEditable)
+    {
+        <button type="submit" name="updatecart" id="updatecart" class="button-2 update-cart-button" style="display:none;">@T("ShoppingCart.UpdateCart")</button>
+    }
+}

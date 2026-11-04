@@ -1,0 +1,41 @@
+@model Nop.Web.Models.ShoppingCart.EstimateShippingModel
+
+<div class="spc-estimate-shipping-form" id="spc-estimate-shipping">
+    <div class="spc-estimate-hint">@T("ShoppingCart.EstimateShipping.Button")</div>
+    <div class="inputs">
+        <label asp-for="CountryId" asp-postfix=":"></label>
+        <select asp-for="CountryId"
+                asp-items="Model.AvailableCountries"
+                data-trigger="country-select"
+                data-url="@(Url.RouteUrl(NopRouteNames.Ajax.GET_STATES_BY_COUNTRY_ID))"
+                data-stateprovince="#@Html.IdFor(model => model.StateProvinceId)"
+                data-loading="#spc-estimate-loading-progress"></select>
+        <nop-required />
+    </div>
+    <div class="inputs">
+        <label asp-for="StateProvinceId" asp-postfix=":"></label>
+        <select asp-for="StateProvinceId" asp-items="Model.AvailableStates"></select>
+        <span id="spc-estimate-loading-progress" style="display:none;" class="please-wait">@T("Common.Wait")</span>
+    </div>
+    @if (Model.UseCity)
+    {
+        <div class="inputs">
+            <label asp-for="City" asp-postfix=":"></label>
+            <input asp-for="City" />
+            <nop-required />
+        </div>
+    }
+    else
+    {
+        <div class="inputs">
+            <label asp-for="ZipPostalCode" asp-postfix=":"></label>
+            <input asp-for="ZipPostalCode" />
+            <nop-required />
+        </div>
+    }
+    <div class="buttons">
+        <button type="button" id="spc-estimate-shipping-button" class="button-2">@T("ShoppingCart.EstimateShipping.Button")</button>
+    </div>
+    <div id="spc-estimate-shipping-errors" class="message-error" style="display:none;"></div>
+    <div id="spc-estimate-shipping-results" class="spc-estimate-results" style="display:none;"></div>
+</div>
