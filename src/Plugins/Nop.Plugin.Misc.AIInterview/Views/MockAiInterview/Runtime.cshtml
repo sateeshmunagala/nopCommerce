@@ -3218,10 +3218,16 @@
                     }, 1500);
                 });
                 const response = await Promise.race([reportRequest, reportTimeout]);
-                if (!response.ok)
-                    logActivity(`Recording size report failed (${response.status}).`);
+                if (!response.ok) {
+                    console.warn('AI Interview recording size report failed.');
+                    return;
+                }
+
+                const result = await response.json();
+                if (result?.success !== true)
+                    console.warn('AI Interview recording size report was rejected.');
             } catch (error) {
-                logActivity(`Recording size report skipped: ${error?.message || 'unknown'}`);
+                console.warn('AI Interview recording size report failed.');
             } finally {
                 if (timeout !== null)
                     clearTimeout(timeout);

@@ -2153,6 +2153,26 @@ public class MockAiInterviewController : BasePluginController
         if (string.IsNullOrWhiteSpace(token))
         {
             _logger.LogError("AI Interview recording upload failure: Token is missing or blank.");
+            if (_workContext != null && _nopLogger != null && _customerService != null)
+            {
+                var customer = await _workContext.GetCurrentCustomerAsync();
+                if (customer != null && await _customerService.IsRegisteredAsync(customer))
+                {
+                    var configuredMaxMb = _aiInterviewSettings?.RecordingUploadMaxMb ?? 0;
+                    var effectiveMaxMb = Math.Clamp(
+                        configuredMaxMb <= 0 ? AIInterviewDefaults.DefaultRecordingUploadMaxMb : configuredMaxMb,
+                        AIInterviewDefaults.MinRecordingUploadMaxMb,
+                        AIInterviewDefaults.MaxRecordingUploadMaxMb);
+                    var effectiveMaximumBytes = effectiveMaxMb * (1024L * 1024L);
+                    var detail = $"Stage=ServerReceived; SessionId=0; CustomerId={customer.Id}; RecordingLength={recording?.Length ?? 0}; EffectiveConfiguredMaximumBytes={effectiveMaximumBytes}; AspNetRequestMaximumBytes={MaxRecordingUploadBytes}; ReasonCode=token-missing;";
+                    await LogRuntimeIssueAsync(
+                        NopLogLevel.Information,
+                        "AI Interview server recording upload received",
+                        detail,
+                        customer);
+                }
+            }
+
             return Json(new { success = false, message = "The recording upload token is missing or blank." });
         }
 
