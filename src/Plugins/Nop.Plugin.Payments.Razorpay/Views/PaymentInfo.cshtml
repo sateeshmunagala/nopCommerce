@@ -25,6 +25,8 @@
         var pendingMessage = document.getElementById('razorpay-pending-message');
 
         var isPaymentVerified = false;
+        var paymentInfoSaveRequestPending = false;
+        var observedPaymentInfoRequests = new WeakSet();
 
         if (typeof $ === 'undefined') {
             logErrorToDiagnosticEndpoint("JQueryMissing", "jQuery is required for Razorpay checkout binding.");
@@ -45,6 +47,62 @@
                     errorContainer.style.display = 'none';
                     return false;
                 }
+            });
+
+        function isPaymentInfoSaveRequest(url) {
+            try {
+                var requestPath = new URL(url || '', window.location.origin).pathname.toLowerCase().replace(/\/+$/, '');
+                return requestPath.endsWith('/opcsavepaymentinfo');
+            } catch (error) {
+                return false;
+            }
+        }
+
+        $(document)
+            .off('.razorpayPaymentInfoDiagnostics')
+            .on('ajaxSend.razorpayPaymentInfoDiagnostics', function (event, jqXHR, settings) {
+                if (!paymentInfoSaveRequestPending || !jqXHR || !isPaymentInfoSaveRequest(settings && settings.url))
+                    return;
+
+                paymentInfoSaveRequestPending = false;
+                observedPaymentInfoRequests.add(jqXHR);
+            })
+            .on('ajaxSuccess.razorpayPaymentInfoDiagnostics', function (event, jqXHR, settings, response) {
+                if (!observedPaymentInfoRequests.delete(jqXHR))
+                    return;
+
+                if (!response || typeof response !== 'object' || Array.isArray(response)) {
+                    logErrorToDiagnosticEndpoint('RazorpayPaymentInfoAjaxUnexpectedResponse', '');
+                    return;
+                }
+
+                if (response.success === false || response.error || (Array.isArray(response.errors) && response.errors.length > 0)) {
+                    logErrorToDiagnosticEndpoint('RazorpayPaymentInfoAjaxJsonError', '');
+                    return;
+                }
+
+                var updateSectionHtml = typeof response.update_section_html === 'string' ? response.update_section_html : '';
+                var updateSectionSelector = typeof response.update_section_selector === 'string' ? response.update_section_selector : '';
+                var gotoSection = typeof response.goto_section === 'string' ? response.goto_section : '';
+                var hasConfirmSection = /confirm/i.test(updateSectionSelector) ||
+                    /confirm/i.test(gotoSection) ||
+                    /id\s*=\s*["'][^"']*confirm/i.test(updateSectionHtml.substring(0, 2000));
+
+                logErrorToDiagnosticEndpoint(
+                    hasConfirmSection
+                        ? 'RazorpayPaymentInfoAjaxConfirmSectionSuccess'
+                        : 'RazorpayPaymentInfoAjaxUnexpectedResponse',
+                    '');
+            })
+            .on('ajaxError.razorpayPaymentInfoDiagnostics', function (event, jqXHR) {
+                if (!observedPaymentInfoRequests.delete(jqXHR))
+                    return;
+
+                logErrorToDiagnosticEndpoint(
+                    jqXHR && jqXHR.statusText === 'parsererror'
+                        ? 'RazorpayPaymentInfoAjaxUnexpectedResponse'
+                        : 'RazorpayPaymentInfoAjaxTransportFailure',
+                    '');
             });
 
         if (!payButton) {
@@ -142,6 +200,7 @@
                         "prefill": data.prefill,
                         "handler": function (response) {
                             // Payment successful in popup, now verify server-side
+                            logErrorToDiagnosticEndpoint('RazorpayPopupSuccessHandlerEntry', '');
                             verifyPayment(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
                         },
                         "modal": {
@@ -202,6 +261,8 @@
             })
             .then(function(data) {
                 if (data.success) {
+                    logErrorToDiagnosticEndpoint('RazorpayVerifyPaymentResponseSuccess', '');
+
                     // Save to hidden fields for form submission
                     document.getElementById('RazorpayOrderId').value = orderId;
                     document.getElementById('RazorpayPaymentId').value = paymentId;
@@ -216,13 +277,29 @@
 
                     // Trigger the checkout next button so they can proceed reliably
                     if (typeof PaymentInfo !== 'undefined' && PaymentInfo.save) {
-                        PaymentInfo.save();
+                        var checkoutLoadWaitingActive = typeof Checkout !== 'undefined' &&
+                            typeof Checkout.loadWaiting === 'function' &&
+                            $('.please-wait:visible').length > 0;
+                        paymentInfoSaveRequestPending = true;
+                        logErrorToDiagnosticEndpoint(
+                            'RazorpayPaymentInfoSaveInvoked',
+                            'CheckoutLoadWaitingActive=' + (checkoutLoadWaitingActive ? 'true' : 'false'));
+                        try {
+                            PaymentInfo.save();
+                        } finally {
+                            paymentInfoSaveRequestPending = false;
+                        }
                     } else {
                         var nextBtn = document.querySelector('.payment-info-next-step-button');
                         if (nextBtn) {
                             // Unbind our blocking handler then click
                             $(document).off('click.razorpayNext', '.payment-info-next-step-button');
-                            nextBtn.click();
+                            paymentInfoSaveRequestPending = true;
+                            try {
+                                nextBtn.click();
+                            } finally {
+                                paymentInfoSaveRequestPending = false;
+                            }
                         }
                     }
                 } else {
@@ -238,20 +315,31 @@
         }
 
         function logErrorToDiagnosticEndpoint(errorCode, contextMsg) {
-            var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
-            var formData = new FormData();
-            if (antiforgeryToken) {
-                formData.append('__RequestVerificationToken', antiforgeryToken.value);
-            }
-            formData.append('error', errorCode);
-            formData.append('context', contextMsg);
+            try {
+                var safeContext = '';
+                if (errorCode === 'RazorpayPaymentInfoSaveInvoked') {
+                    safeContext = contextMsg === 'CheckoutLoadWaitingActive=true' || contextMsg === 'CheckoutLoadWaitingActive=false'
+                        ? contextMsg
+                        : 'CheckoutLoadWaitingActive=unknown';
+                }
 
-            fetch('@Url.Action("LogClientError", "RazorpayPublic")', {
-                method: 'POST',
-                body: formData
-            }).catch(function(e) {
-                // Ignore errors posting to diagnostic endpoint
-            });
+                var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+                var formData = new FormData();
+                if (antiforgeryToken) {
+                    formData.append('__RequestVerificationToken', antiforgeryToken.value);
+                }
+                formData.append('error', errorCode);
+                formData.append('context', safeContext);
+
+                fetch('@Url.Action("LogClientError", "RazorpayPublic")', {
+                    method: 'POST',
+                    body: formData
+                }).catch(function() {
+                    // Ignore errors posting to diagnostic endpoint
+                });
+            } catch (error) {
+                // Diagnostic failures must not affect checkout.
+            }
         }
 
         function showError(msg) {
