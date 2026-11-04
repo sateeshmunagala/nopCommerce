@@ -318,24 +318,24 @@ public class RazorpayPublicController : BasePublicController
                 var loadWaitingState = error == PaymentInfoSaveInvokedEvent
                     ? context switch
                     {
-                        "CheckoutLoadWaitingActive=true" => "true",
-                        "CheckoutLoadWaitingActive=false" => "false",
+                        "CheckoutLoadWaitingState=active" => "active",
+                        "CheckoutLoadWaitingState=false" => "false",
                         _ => "unknown"
                     }
                     : "not-reported";
-                var message = $"Stage={error}; StoreId={store.Id}; CustomerId={customer.Id}; SelectedMethodState={selectedMethodState}; RazorpayOrderId={MaskRazorpayOrderId(razorpayOrderId)}; ClientReportedCheckoutLoadWaitingActive={loadWaitingState};";
+                var diagnosticMessage = $"Stage={error}; StoreId={store.Id}; CustomerId={customer.Id}; SelectedMethodState={selectedMethodState}; RazorpayOrderId={MaskRazorpayOrderId(razorpayOrderId)}; ClientReportedCheckoutLoadWaitingActive={loadWaitingState};";
 
                 if (IsPaymentInfoDiagnosticError(error) || selectedMethodState != "razorpay")
-                    await _logger.WarningAsync($"Razorpay checkout payment selection diagnostic. {message}");
+                    await _logger.WarningAsync($"Razorpay checkout payment selection diagnostic. {diagnosticMessage}");
                 else
-                    await _logger.InformationAsync($"Razorpay checkout payment selection diagnostic. {message}");
+                    await _logger.InformationAsync($"Razorpay checkout payment selection diagnostic. {diagnosticMessage}");
 
                 return Json(new { success = true });
             }
 
             var safeError = NormalizeExistingClientErrorCategory(error);
-            var message = $"Razorpay Client Error: {safeError}. Context=DetailsOmitted; CustomerId: {customer.Id}, StoreId: {store.Id}";
-            await _logger.WarningAsync(message);
+            var clientErrorMessage = $"Razorpay Client Error: {safeError}. Context=DetailsOmitted; CustomerId: {customer.Id}, StoreId: {store.Id}";
+            await _logger.WarningAsync(clientErrorMessage);
 
             return Json(new { success = true });
         }
