@@ -37,6 +37,8 @@ public class MockAiInterviewController : BasePluginController
     private const string CreditRefundNotice = "Credit charge reversed because interview start did not complete.";
     private const string FirstQuestionStartFailureReasonCode = "FIRST_QUESTION_START_FAILED";
     public const long MaxRecordingUploadBytes = 250L * 1024L * 1024L;
+    private const long MaxClientRecordingSizeReportBytes = 10L * 1024L * 1024L * 1024L;
+    private const string RecordingSizeEventType = "recording-size";
 
     private const string VoiceUnavailableMessage = "Voice mode is unavailable. Please type your answer below.";
     private const string FeedbackIssueSupport = "Talk to support team";
@@ -1633,7 +1635,7 @@ public class MockAiInterviewController : BasePluginController
     }
 
     [HttpPost]
-    public async Task<IActionResult> RuntimeClientEvent(string token, string eventType, string requestName, int? statusCode, string message, string failureKind, long? elapsedMilliseconds, bool? success = null)
+    public async Task<IActionResult> RuntimeClientEvent(string token, string eventType, string requestName, int? statusCode, string message, string failureKind, long? elapsedMilliseconds, bool? success = null, long? recordingSizeBytes = null, long? recordingUploadMaxBytes = null, string recordingUploadStage = null)
     {
         var resolvedSession = await _interviewSessionService.GetSessionByTokenAsync(token);
         var isValidSession = IsSessionUsable(resolvedSession);
@@ -1648,6 +1650,52 @@ public class MockAiInterviewController : BasePluginController
 
         if (string.Equals(safeRequestName, "runtime-client-event", StringComparison.OrdinalIgnoreCase))
             return Json(new { success = false, message = "Runtime client-event logging is not recursive." });
+
+        if (string.Equals(safeEventType, RecordingSizeEventType, StringComparison.Ordinal))
+        {
+            var now = DateTime.UtcNow;
+            var sessionWithinUploadWindow = resolvedSession != null &&
+                !resolvedSession.Deleted &&
+                string.Equals(resolvedSession.Token, token, StringComparison.Ordinal) &&
+                string.IsNullOrWhiteSpace(resolvedSession.RecordingUrl) &&
+                resolvedSession.TokenExpiryUtc.HasValue &&
+                resolvedSession.TokenExpiryUtc.Value > now &&
+                (IsSessionUsable(resolvedSession, now) ||
+                 InterviewRuntimeService.IsCompletionPending(resolvedSession) ||
+                 resolvedSession.CompletedOnUtc.HasValue && resolvedSession.CompletedOnUtc.Value >= now.AddMinutes(-10));
+            var configuredLimitMinimum = (long)AIInterviewDefaults.MinRecordingUploadMaxMb * 1024L * 1024L;
+            var configuredLimitMaximum = (long)AIInterviewDefaults.MaxRecordingUploadMaxMb * 1024L * 1024L;
+            var validSizeMetadata = recordingSizeBytes.HasValue &&
+                recordingSizeBytes.Value >= 0 &&
+                recordingSizeBytes.Value <= MaxClientRecordingSizeReportBytes &&
+                recordingUploadMaxBytes.HasValue &&
+                recordingUploadMaxBytes.Value >= configuredLimitMinimum &&
+                recordingUploadMaxBytes.Value <= configuredLimitMaximum &&
+                recordingUploadMaxBytes.Value % (1024L * 1024L) == 0 &&
+                safeRequestName == "upload-recording" &&
+                (recordingUploadStage == "client-preflight-rejected" || recordingUploadStage == "client-upload-attempt") &&
+                (recordingUploadStage == "client-preflight-rejected"
+                    ? recordingSizeBytes.Value > recordingUploadMaxBytes.Value
+                    : recordingSizeBytes.Value <= recordingUploadMaxBytes.Value);
+
+            if (!sessionWithinUploadWindow || !validSizeMetadata)
+                return Json(new { success = false, message = "Runtime client event ignored for invalid session or size metadata." });
+
+            var sizeBytes = recordingSizeBytes.Value;
+            var configuredLimit = recordingUploadMaxBytes.Value;
+            var limitExceeded = sizeBytes > configuredLimit;
+            var sizeMegabytes = (sizeBytes / 1024d / 1024d).ToString("F2", CultureInfo.InvariantCulture);
+            var limitMegabytes = (configuredLimit / 1024d / 1024d).ToString("F2", CultureInfo.InvariantCulture);
+            var sizeDetail = $"Stage={recordingUploadStage}; SessionId={resolvedSession.Id}; RecordingBytes={sizeBytes}; RecordingMegabytes={sizeMegabytes}; ConfiguredLimitBytes={configuredLimit}; ConfiguredLimitMegabytes={limitMegabytes}; ClientLimitExceeded={limitExceeded.ToString().ToLowerInvariant()};";
+            _logger?.LogInformation("AI Interview client recording size. {Detail}", sizeDetail);
+            await LogRuntimeIssueAsync(
+                NopLogLevel.Information,
+                "AI Interview client recording size",
+                sizeDetail,
+                await ResolveLogCustomerAsync(resolvedSession));
+
+            return Json(new { success = true });
+        }
 
         if (session == null)
         {

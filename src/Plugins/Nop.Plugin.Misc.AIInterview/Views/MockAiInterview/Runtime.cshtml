@@ -3190,6 +3190,44 @@
             }
         };
 
+        const reportClientRecordingSize = async (recordingSizeBytes, configuredLimitBytes, stage) => {
+            if (!config.runtimeClientEventUrl)
+                return;
+
+            let timeout = null;
+            try {
+                const controller = typeof AbortController === 'function' ? new AbortController() : null;
+                const payload = new URLSearchParams({
+                    token: sessionToken,
+                    eventType: 'recording-size',
+                    requestName: 'upload-recording',
+                    recordingSizeBytes: String(recordingSizeBytes),
+                    recordingUploadMaxBytes: String(configuredLimitBytes),
+                    recordingUploadStage: stage
+                });
+                const reportRequest = fetch(config.runtimeClientEventUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: payload,
+                    ...(controller ? { signal: controller.signal } : {})
+                });
+                const reportTimeout = new Promise((resolve, reject) => {
+                    timeout = setTimeout(() => {
+                        controller?.abort();
+                        reject(new Error('report timed out'));
+                    }, 1500);
+                });
+                const response = await Promise.race([reportRequest, reportTimeout]);
+                if (!response.ok)
+                    logActivity(`Recording size report failed (${response.status}).`);
+            } catch (error) {
+                logActivity(`Recording size report skipped: ${error?.message || 'unknown'}`);
+            } finally {
+                if (timeout !== null)
+                    clearTimeout(timeout);
+            }
+        };
+
         if (completionUploadTimeoutMismatch) {
             reportRuntimeClientRequestFailure({
                 requestName: 'upload-recording',
@@ -3486,16 +3524,24 @@
             if (!config.recordingUploadUrl || !blob || recordingUploadInFlight)
                 return false;
 
-            if ((blob.size || 0) > recordingUploadMaxBytes) {
-                const maxMb = Math.round(recordingUploadMaxBytes / 1024 / 1024);
-                logActivity(`Recording upload blocked before request. blobBytes=${blob.size || 0}; maxBytes=${recordingUploadMaxBytes}`);
-                setRecordingStatus(`Recording is larger than the ${maxMb} MB upload limit.`, true);
-                return false;
-            }
-
+            const recordingSizeBytes = Number(blob.size) || 0;
+            const configuredLimitBytes = recordingUploadMaxBytes;
             recordingUploadInFlight = true;
-            logActivity(`Recording upload request start. blobBytes=${blob.size || 0}`);
             try {
+                const clientLimitExceeded = recordingSizeBytes > configuredLimitBytes;
+                await reportClientRecordingSize(
+                    recordingSizeBytes,
+                    configuredLimitBytes,
+                    clientLimitExceeded ? 'client-preflight-rejected' : 'client-upload-attempt');
+
+                if (clientLimitExceeded) {
+                    const maxMb = Math.round(configuredLimitBytes / 1024 / 1024);
+                    logActivity(`Recording upload blocked before request. blobBytes=${recordingSizeBytes}; maxBytes=${configuredLimitBytes}`);
+                    setRecordingStatus(`Recording is larger than the ${maxMb} MB upload limit.`, true);
+                    return false;
+                }
+
+                logActivity(`Recording upload request start. blobBytes=${recordingSizeBytes}`);
                 const formData = new FormData();
                 formData.append('token', sessionToken);
                 formData.append('recording', blob, `interview-${Date.now()}.webm`);

@@ -3708,8 +3708,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     {
         var now = DateTime.UtcNow;
         var normalizedContentType = NormalizeRecordingContentType(recording?.ContentType);
-        var validation = await ValidateRecordingUploadAsync(token, now);
+        var validation = await ValidateRecordingUploadAsync(token, now, recording, normalizedContentType);
         var session = validation.Session;
+        var maxRecordingBytes = (long)NormalizeRecordingUploadMaxMb(_settings?.RecordingUploadMaxMb ?? 0) * 1024L * 1024L;
         if (!validation.Allowed)
         {
             await LogRecordingUploadFailureAsync(
@@ -3724,13 +3725,14 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             return RecordingFailure("Invalid or expired session token.", validation.ReasonCode);
         }
 
+        await LogRecordingUploadStartAsync(session, recording, null, normalizedContentType);
+
         if (recording == null || recording.Length <= 0)
         {
             await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is empty.", "empty recording", normalizedContentType: normalizedContentType, reasonCode: EmptyRecordingReasonCode, token: token);
             return RecordingFailure("Recording file is empty.", EmptyRecordingReasonCode);
         }
 
-        var maxRecordingBytes = (long)NormalizeRecordingUploadMaxMb(_settings?.RecordingUploadMaxMb ?? 0) * 1024L * 1024L;
         if (recording.Length > maxRecordingBytes)
         {
             await LogRecordingUploadFailureAsync(session, recording, null, "Recording file is too large.", "recording too large", normalizedContentType: normalizedContentType, reasonCode: RecordingTooLargeReasonCode, token: token);
@@ -3757,7 +3759,6 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             blobName = BuildRecordingBlobName(customer, DateTime.UtcNow);
             var uploadUrl = $"{containerUrl}/{Uri.EscapeDataString(blobName)}{sasToken}";
 
-            await LogRecordingUploadStartAsync(session, recording, blobName, normalizedContentType);
             using var httpClient = CreateHttpClient();
             using var content = new StreamContent(recording.OpenReadStream());
             content.Headers.ContentType = new MediaTypeHeaderValue(normalizedContentType);
@@ -3842,20 +3843,25 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             session.TokenExpiryUtc > utcNow;
     }
 
-    private async Task<RecordingUploadValidationResult> ValidateRecordingUploadAsync(string token, DateTime utcNow)
+    private async Task<RecordingUploadValidationResult> ValidateRecordingUploadAsync(string token, DateTime utcNow, IFormFile recording, string normalizedContentType)
     {
+        InterviewSession session = null;
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            session = await _sessionService.GetSessionByTokenAsync(token);
+            if (session == null)
+                session = await _sessionService.GetSessionByTokenIncludingDeletedAsync(token);
+        }
+
+        await LogRecordingUploadReceivedAsync(session, recording, normalizedContentType);
+
         if (string.IsNullOrWhiteSpace(token))
             return RecordingUploadRejected("token-missing", "The recording upload token is missing or blank.");
 
-        var session = await _sessionService.GetSessionByTokenAsync(token);
         if (session == null)
         {
-            session = await _sessionService.GetSessionByTokenIncludingDeletedAsync(token);
-            if (session == null)
-            {
-                var logMessage = $"No interview session matched the recording upload token. TokenPresent=true; TokenLength={token.Length}; MaskedToken={BuildMaskedTokenPrefix(token)}; ServerUtc={utcNow:O}; LookupResult=not-found-including-deleted.";
-                return RecordingUploadRejected("session-not-found", logMessage);
-            }
+            var logMessage = $"No interview session matched the recording upload token. TokenPresent=true; TokenLength={token.Length}; MaskedToken={BuildMaskedTokenPrefix(token)}; ServerUtc={utcNow:O}; LookupResult=not-found-including-deleted.";
+            return RecordingUploadRejected("session-not-found", logMessage);
         }
 
         if (session.Deleted)
@@ -5187,6 +5193,17 @@ public class InterviewRuntimeService : IInterviewRuntimeService
         await LogRuntimeIssueAsync(NopLogLevel.Information, "AI Interview recording upload start", detail, await ResolveLogCustomerAsync(session));
     }
 
+    protected virtual async Task LogRecordingUploadReceivedAsync(InterviewSession session, IFormFile recording, string normalizedContentType)
+    {
+        var detail = BuildRecordingUploadLog(session, recording, null, "ServerReceived", normalizedContentType: normalizedContentType);
+        _logger?.LogInformation("AI Interview server recording upload received. {Detail}", detail);
+        await LogRuntimeIssueAsync(
+            NopLogLevel.Information,
+            "AI Interview server recording upload received",
+            detail,
+            await ResolveLogCustomerAsync(session));
+    }
+
     protected virtual async Task LogRecordingUploadSuccessAsync(InterviewSession session, IFormFile recording, string blobName, int azureStatus, string normalizedContentType)
     {
         var detail = BuildRecordingUploadLog(session, recording, blobName, "Success", azureStatus: azureStatus, normalizedContentType: normalizedContentType);
@@ -5213,6 +5230,9 @@ public class InterviewRuntimeService : IInterviewRuntimeService
     protected virtual string BuildRecordingUploadLog(InterviewSession session, IFormFile recording, string blobName, string stage, string message = null, string reason = null, int? azureStatus = null, string azureErrorBody = null, string normalizedContentType = null, string reasonCode = null, string token = null)
     {
         var safeToken = token ?? session?.Token;
+        var configuredMaximumBytes = (long)NormalizeRecordingUploadMaxMb(_settings?.RecordingUploadMaxMb ?? 0) * 1024L * 1024L;
+        var aspNetRequestMaximumBytes = global::Nop.Plugin.Misc.AIInterview.Controllers.MockAiInterviewController.MaxRecordingUploadBytes;
+        var recordingLength = recording?.Length ?? 0;
         var details = new List<string>
         {
             $"Stage={stage}",
@@ -5230,8 +5250,13 @@ public class InterviewRuntimeService : IInterviewRuntimeService
             $"IsActive={session?.IsActive ?? false}",
             $"RecordingUrlConfigured={!string.IsNullOrWhiteSpace(session?.RecordingUrl)}",
             $"StoredRecordingUrl={BuildSafeRecordingUrlLogValue(session?.RecordingUrl)}",
-            $"RecordingLength={recording?.Length ?? 0}",
-            $"ContentType={recording?.ContentType ?? string.Empty}",
+            $"RecordingLength={recordingLength}",
+            $"RecordingLengthMegabytes={(recordingLength / 1024d / 1024d).ToString("F2", CultureInfo.InvariantCulture)}",
+            $"EffectiveConfiguredMaximumBytes={configuredMaximumBytes}",
+            $"EffectiveConfiguredMaximumMegabytes={(configuredMaximumBytes / 1024d / 1024d).ToString("F2", CultureInfo.InvariantCulture)}",
+            $"ConfiguredLimitExceeded={recordingLength > configuredMaximumBytes}",
+            $"AspNetRequestMaximumBytes={aspNetRequestMaximumBytes}",
+            $"AspNetRequestLimitExceeded={recordingLength > aspNetRequestMaximumBytes}",
             $"NormalizedAzureContentType={normalizedContentType ?? NormalizeRecordingContentType(recording?.ContentType)}",
             $"BlobNamePresent={!string.IsNullOrWhiteSpace(blobName)}",
             $"AzureContainerUrlConfigured={!string.IsNullOrWhiteSpace(_settings?.AzureBlobStorageContainerUrl)}",
