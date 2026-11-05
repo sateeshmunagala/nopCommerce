@@ -30,7 +30,6 @@
     <Content Include="App_Data\**" CopyToPublishDirectory="PreserveNewest" Exclude="App_Data\*.json" />
     <Content Remove="App_Data\*.json" />
     <Content Remove="Plugins\Misc.AppointmentBooking\**" />
-    <Content Remove="Plugins\Misc.Skillfinder.InlineFilter\**" />
     <Content Remove="Plugins\Misc.WhatsAppBusiness\**" />
     <Content Remove="Plugins\Widgets.AISearch\**" />
     <Content Remove="App_Data\Installation\SampleData.json" />
@@ -41,20 +40,16 @@
 
     <Compile Remove="Plugins\Misc.AppointmentBooking\**" />
 
-    <Compile Remove="Plugins\Misc.Skillfinder.InlineFilter\**" />
-
     <Compile Remove="Plugins\Misc.WhatsAppBusiness\**" />
 
     <Compile Remove="Plugins\Widgets.AISearch\**" />
     <Content Remove="Plugins\**;Themes\**" />
     <EmbeddedResource Remove="Plugins\**;Themes\**" />
     <EmbeddedResource Remove="Plugins\Misc.AppointmentBooking\**" />
-    <EmbeddedResource Remove="Plugins\Misc.Skillfinder.InlineFilter\**" />
     <EmbeddedResource Remove="Plugins\Misc.WhatsAppBusiness\**" />
     <EmbeddedResource Remove="Plugins\Widgets.AISearch\**" />
     <None Remove="Plugins\**;Themes\**" />
     <None Remove="Plugins\Misc.AppointmentBooking\**" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\**" />
     <None Remove="Plugins\Misc.WhatsAppBusiness\**" />
     <None Remove="Plugins\Widgets.AISearch\**" />
     <None Include="Plugins\**" CopyToPublishDirectory="PreserveNewest" Exclude="Plugins\**\runtimes\**;Plugins\**\ref\**;Plugins\**\*.pdb" />
@@ -98,24 +93,6 @@
     <None Remove="Plugins\Misc.AppointmentBooking\Views\_ViewImports.cshtml" />
     <None Remove="Plugins\Misc.AppointmentBooking\wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\css\dataTables.bootstrap4.min.css" />
     <None Remove="Plugins\Misc.AppointmentBooking\wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\js\dataTables.bootstrap4.min.js" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Content\css\inline-filter.css" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Content\js\htmx.min.js" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Content\js\inline-filter.js" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Nop.Plugin.Misc.Skillfinder.InlineFilter.dll" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Nop.Web.deps.json" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Nop.Web.runtimeconfig.dev.json" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Nop.Web.runtimeconfig.json" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Nop.Web.staticwebassets.endpoints.json" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Nop.Web.staticwebassets.runtime.json" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\plugin.json" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Themes\JobBoardVenture\Views\Catalog\CategoryTemplate.Pricing.cshtml" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Themes\JobBoardVenture\Views\Product\ProductTemplate.JobDetails.cshtml" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Views\PublicInfo.cshtml" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Views\Shared\Components\SkillfinderInlineFilter\Default.cshtml" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Views\_FilteredProductsGrid.cshtml" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\Views\_ViewImports.cshtml" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\css\dataTables.bootstrap4.min.css" />
-    <None Remove="Plugins\Misc.Skillfinder.InlineFilter\wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\js\dataTables.bootstrap4.min.js" />
     <None Remove="Plugins\Misc.WhatsAppBusiness\Nop.Plugin.Misc.WhatsAppBusiness.dll" />
     <None Remove="Plugins\Misc.WhatsAppBusiness\plugin.json" />
     <None Remove="Plugins\Misc.WhatsAppBusiness\Views\Components\WhatsAppOptIn\Default.cshtml" />
@@ -146,11 +123,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Plugins\Misc.SinglePageCheckout\Content\" />
+    <Folder Include="Plugins\Misc.SinglePageCheckout\Views\Components\SinglePageCheckoutBuyNow\" />
     <Folder Include="Plugins\Payments.Razorpay\Themes\JobBoardVenture\Views\Catalog\" />
     <Folder Include="Plugins\Payments.Razorpay\Themes\JobBoardVenture\Views\Product\" />
     <Folder Include="Plugins\Payments.Razorpay\Views\" />
     <Folder Include="Plugins\Payments.Razorpay\wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\css\" />
     <Folder Include="Plugins\Payments.Razorpay\wwwroot\lib_npm\datatables.net-buttons-bs4\node_modules\datatables.net-bs4\js\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Plugins\Misc.Skillfinder.InlineFilter\Nop.Plugin.Misc.Skillfinder.InlineFilter.pdb" />
   </ItemGroup>
 
   <!-- Plugin models are loaded at runtime and cannot be referenced by Nop.Web during compilation.
