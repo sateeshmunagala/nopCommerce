@@ -106,11 +106,14 @@
                                             <span asp-validation-for="Email"></span>
                                         }
                                     </div>
-                                    <div class="inputs" data-mode="phone" style="display: none;">
-                                        <label for="@Html.IdFor(m => m.Phone)">@T("Account.Fields.Phone"):</label>
-                                        <input asp-for="Phone" class="phone" placeholder="@T("PhoneVerification.Placeholder")" />
-                                        <span asp-validation-for="Phone"></span>
-                                    </div>
+                                    @if (Model.LoginByPhone)
+                                    {
+                                        <div class="inputs" data-mode="phone" style="display: none;">
+                                            <label asp-for="Phone" asp-postfix=":"></label>
+                                            <input asp-for="Phone" class="phone" placeholder="@T("PhoneVerification.Placeholder")" />
+                                            <span asp-validation-for="Phone"></span>
+                                        </div>
+                                    }
                                     <div class="inputs" data-mode="email" style="display: none;">
                                         <label for="@Html.IdFor(m => m.Password)">@T("Account.Fields.Password"):</label>
                                         <div class="login-password">
