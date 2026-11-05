@@ -1,0 +1,124 @@
+﻿@model ContactUsModel
+@{
+    Layout = "_ColumnsOne";
+
+    //title
+    NopHtml.AddTitleParts(T("PageTitle.ContactUs").Text);
+    //page class
+    NopHtml.AppendPageCssClassParts("html-contact-page");
+}
+<div class="page contact-page">
+    <div class="page-body">
+        <div class="contact-shell">
+            <aside class="contact-info-panel">
+                <div class="contact-hero">
+                    <div class="contact-hero-intro">
+                        <div class="page-title">
+                            <h1 id="contact-page-title">@T("PageTitle.ContactUs")</h1>
+                        </div>
+                    </div>
+                    <section class="contact-hero-metadata-cards" aria-label="@T("PageTitle.ContactUs")">
+                        <div class="contact-hero-metadata-card">@await Component.InvokeAsync(typeof(TopicBlockViewComponent), new { systemName = "ContactUs" })</div>
+                        <div class="contact-hero-metadata-card">@await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ContactUsTop, additionalData = Model })</div>
+                        <div class="contact-hero-metadata-card">
+                            <div class="contact-meta-item">
+                                <span class="contact-meta-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path d="M3 6.75h18v10.5H3z" />
+                                        <path d="m3.75 7.5 8.25 6 8.25-6" />
+                                    </svg>
+                                </span>
+                                <a class="contact-meta-text contact-meta-link" href="mailto:support@skillfinderai.com">Email: support@skillfinderai.com</a>
+                            </div>
+                        </div>
+                        <div class="contact-hero-metadata-card">
+                            <div class="contact-meta-item">
+                                <span class="contact-meta-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                        <path d="M7.4 3.75H4.75c-.55 0-1 .45-1 1 0 8.56 6.94 15.5 15.5 15.5.55 0 1-.45 1-1V16.6l-3.55-.9-1.1 2.2a13.14 13.14 0 0 1-9.5-9.5l2.2-1.1-.9-3.55Z" />
+                                    </svg>
+                                </span>
+                                <a class="contact-meta-text contact-meta-link" href="tel:+916281994649">Phone/WhatsApp: +91 6281 994 649</a>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+
+            <section class="contact-form-panel" aria-labelledby="contact-page-title">
+                @if (Model.SuccessfullySent)
+                {
+                    <div class="result">
+                        @Model.Result
+                    </div>
+                }
+                else
+                {
+                    <form asp-route="@NopRouteNames.General.CONTACT_US" method="post">
+                        <div asp-validation-summary="ModelOnly" class="message-error"></div>
+                        <section class="fieldset contact-form-fieldset">
+                            <div class="form-fields contact-form-fields">
+                                <div class="inputs contact-form-field">
+                                    <label asp-for="FullName" asp-postfix=":"></label>
+                                    <div class="contact-form-control">
+                                        <input asp-for="FullName" placeholder="@T("ContactUs.FullName.Hint")" class="fullname" />
+                                        <nop-required />
+                                    </div>
+                                    <span asp-validation-for="FullName"></span>
+                                </div>
+                                <div class="inputs contact-form-field">
+                                    <label asp-for="Email" asp-postfix=":"></label>
+                                    <div class="contact-form-control">
+                                        <input asp-for="Email" placeholder="@T("ContactUs.Email.Hint")" class="email" />
+                                        <nop-required />
+                                    </div>
+                                    <span asp-validation-for="Email"></span>
+                                </div>
+                                @if (Model.SubjectEnabled)
+                                {
+                                    <div class="inputs contact-form-field contact-form-field-wide">
+                                        <label asp-for="Subject" asp-postfix=":"></label>
+                                        <div class="contact-form-control">
+                                            <input asp-for="Subject" placeholder="@T("ContactUs.Subject.Hint")" class="subject" />
+                                            <nop-required />
+                                        </div>
+                                        <span asp-validation-for="Subject"></span>
+                                    </div>
+                                }
+                                <div class="inputs contact-form-field contact-form-field-wide contact-form-field-enquiry">
+                                    <label asp-for="Enquiry" asp-postfix=":"></label>
+                                    <div class="contact-form-control">
+                                        <textarea asp-for="Enquiry" placeholder="@T("ContactUs.Enquiry.Hint")" class="enquiry"></textarea>
+                                        <nop-required />
+                                    </div>
+                                    <span asp-validation-for="Enquiry"></span>
+                                </div>
+
+                                @if (Model.ContactFormAttributes.Count > 0)
+                                {
+                                    <div class="contact-form-attributes">
+                                        @await Html.PartialAsync("_ContactFormAttributes", Model.ContactFormAttributes)
+                                    </div>
+                                }
+
+                                @if (Model.DisplayCaptcha)
+                                {
+                                    <div class="contact-form-captcha">
+                                        <nop-captcha />
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                        <section class="buttons contact-form-actions">
+                            <button type="submit" name="send-email" class="button-1 contact-us-button">@T("ContactUs.Button")</button>
+                        </section>
+                    </form>
+                }
+            </section>
+        </div>
+
+        <div class="contact-page-widgets">
+            @await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.ContactUsBottom, additionalData = Model })
+        </div>
+    </div>
+</div>
