@@ -35,6 +35,7 @@ public partial class WebWorkContext : IWorkContext
     protected readonly ICustomerService _customerService;
     protected readonly IEventPublisher _eventPublisher;
     protected readonly IGenericAttributeService _genericAttributeService;
+    protected readonly IGeoLookupService _geoLookupService;
     protected readonly IHttpContextAccessor _httpContextAccessor;
     protected readonly ILanguageService _languageService;
     protected readonly IStoreContext _storeContext;
@@ -62,6 +63,7 @@ public partial class WebWorkContext : IWorkContext
         ICustomerService customerService,
         IEventPublisher eventPublisher,
         IGenericAttributeService genericAttributeService,
+        IGeoLookupService geoLookupService,
         IHttpContextAccessor httpContextAccessor,
         ILanguageService languageService,
         IStoreContext storeContext,
@@ -78,6 +80,7 @@ public partial class WebWorkContext : IWorkContext
         _customerService = customerService;
         _eventPublisher = eventPublisher;
         _genericAttributeService = genericAttributeService;
+        _geoLookupService = geoLookupService;
         _httpContextAccessor = httpContextAccessor;
         _languageService = languageService;
         _storeContext = storeContext;
@@ -431,10 +434,26 @@ public partial class WebWorkContext : IWorkContext
         var customerCurrency = allStoreCurrencies.FirstOrDefault(currency => currency.Id == customer.CurrencyId);
         if (customerCurrency == null)
         {
+            //set a one-time geo default while keeping subsequent customer currency overrides intact
+            if (!customer.CurrencyId.HasValue)
+            {
+                var countryIsoCode = await _geoLookupService.LookupCountryIsoCodeAsync(_webHelper.GetCurrentIpAddress());
+                var currencyCode = string.Equals(countryIsoCode, "IN", StringComparison.InvariantCultureIgnoreCase) ? "INR" : "USD";
+
+                customerCurrency = allStoreCurrencies.FirstOrDefault(currency =>
+                    currency.CurrencyCode.Equals(currencyCode, StringComparison.InvariantCultureIgnoreCase));
+
+                if (customerCurrency != null)
+                    await SetWorkingCurrencyAsync(customerCurrency);
+            }
+
             //it not found, then try to get the default currency for the current language (if specified)
-            var language = await GetWorkingLanguageAsync();
-            customerCurrency = allStoreCurrencies
-                .FirstOrDefault(currency => currency.Id == language.DefaultCurrencyId);
+            if (customerCurrency == null)
+            {
+                var language = await GetWorkingLanguageAsync();
+                customerCurrency = allStoreCurrencies
+                    .FirstOrDefault(currency => currency.Id == language.DefaultCurrencyId);
+            }
         }
 
         //if the default currency for the current store not found, then try to get the first one
