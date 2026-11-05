@@ -225,7 +225,7 @@
                                 <input asp-for="Phone" type="tel" placeholder="@T("PhoneVerification.Placeholder")" />
                                 @if (Model.PhoneRequired) { <nop-required /> }
                                 <span asp-validation-for="Phone"></span>
-                                @if (!Model.PhoneSmsVerified)
+                                @if (Model.LoginByPhoneEnabled && !Model.PhoneSmsVerified)
                                 {
                                     <span class="phone-status">@T("Account.Fields.Phone.Status.NotVerified")</span>
                                 }
