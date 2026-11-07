@@ -13066,3 +13066,27 @@ a.ai-home-performer-name:focus-visible {
 
   }
 }
+
+/* ========================================================================== Phase 7: homepage Top Performers aligned with the other homepage sections ========================================================================== */ .jb-home-landing .ai-home-performers {
+  padding: 24px 16px;
+  border-radius: 16px;
+}
+
+@media (min-width: 1001px) {
+  .jb-home-landing .ai-home-performers {
+    padding: 32px;
+  }
+}
+
+.html-home-page .ai-home-performers-header h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+@media (min-width: 1025px) {
+  .html-home-page .ai-home-performers-header h2 {
+    font-size: clamp(1.65rem, 2vw, 2.15rem);
+  }
+}
