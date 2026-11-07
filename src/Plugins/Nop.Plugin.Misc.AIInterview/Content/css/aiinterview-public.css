@@ -12659,3 +12659,410 @@ a.ai-home-performer-name:focus-visible {
     max-height: 240px;
   }
 }
+
+/* ==========================================================================
+   Phase 6: interview runtime room (MockAiInterview/Runtime)
+   ========================================================================== */
+
+/* E. Rounded, lighter frame that matches the rest of the site */
+.runtime-page {
+          border-color: #dde4eb;
+          border-radius: 8px;
+}
+
+.runtime-stage,
+.runtime-sidebar {
+          border-color: #e3e9ef;
+          border-radius: 8px;
+          background: #ffffff;
+          box-shadow: none;
+}
+
+.runtime-video {
+          border: 0;
+          border-radius: 6px;
+}
+
+.runtime-avatar,
+.runtime-conversation,
+.runtime-chat-placeholder,
+.runtime-chat-bubble,
+.runtime-question,
+.runtime-message {
+          border-radius: 6px;
+}
+
+.runtime-answer textarea,
+.runtime-candidate-chip,
+.runtime-timer-chip,
+.runtime-meta .button-2,
+.runtime-icon-button,
+.runtime-controls #start-or-next,
+.runtime-chat-placeholder-icon,
+.runtime-chat-avatar,
+.runtime-avatar-status {
+          border-radius: 4px;
+}
+
+.runtime-composer-send {
+          border-radius: 4px !important;
+}
+
+/* B. Stage: the video fills the space, controls sit flush underneath (no empty grid rows) */
+.runtime-stage {
+          grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.runtime-controls {
+          padding: 6px 2px 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          box-shadow: none;
+}
+
+/* A. Chat panel: conversation stretches, answer box pinned to the bottom */
+#runtime-panel-conversation {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+}
+
+  #runtime-panel-conversation > .runtime-conversation {
+            flex: 1 1 auto;
+  }
+
+  #runtime-panel-conversation > .runtime-answer {
+            flex: 0 0 auto;
+            margin: 0;
+  }
+
+.runtime-answer-composer {
+          align-items: end;
+}
+
+.runtime-composer-send {
+          width: 44px;
+          min-width: 44px !important;
+          height: 44px;
+}
+
+/* I. Light underline tabs, as on My Activity and the dashboards */
+.runtime-sidebar-tabs {
+          gap: 0;
+          border-bottom: 1px solid #e3e9ef;
+}
+
+.runtime-tab {
+          min-height: 44px;
+          border: 0;
+          border-bottom: 3px solid transparent;
+          border-radius: 0;
+          background: transparent;
+          color: #5b6570;
+          font-size: 0.95rem;
+          letter-spacing: normal;
+          text-transform: none;
+          box-shadow: none;
+}
+
+  .runtime-tab:hover,
+  .runtime-tab:focus-visible {
+            border-color: transparent;
+            border-bottom-color: #cbd5e1;
+            background: transparent;
+            color: #1f2937;
+  }
+
+  .runtime-tab.is-active {
+            border-color: transparent;
+            border-bottom-color: var(--jb-accent, #35d6b4);
+            background: transparent;
+            color: var(--jb-action-active-background, #0f766e);
+            box-shadow: none;
+  }
+
+/* J. Clearer secondary actions in the header */
+.runtime-feedback-trigger {
+          border-color: #cfe9e2;
+          background: #ffffff;
+          color: var(--jb-action-active-background, #0f766e);
+}
+
+.runtime-stop-button:disabled {
+          border-color: #d5dce4;
+          background: #ffffff;
+          color: #64748b;
+          opacity: 1;
+}
+
+/* D. One height for header items and control buttons (desktop and tablet) */
+@media (min-width: 641px) {
+          .runtime-back-button,
+          .runtime-meta > .runtime-feedback-trigger,
+          .runtime-meta > #btn-runtime-tour,
+          .runtime-meta > .runtime-candidate-chip,
+          .runtime-meta > .runtime-timer-chip,
+          .runtime-meta > .runtime-stop-button {
+                    height: 40px;
+                    min-height: 40px;
+                    box-sizing: border-box;
+
+  }
+
+          .runtime-back-button,
+          .runtime-meta > #btn-runtime-tour {
+                    width: 40px;
+                    min-width: 40px;
+
+  }
+
+          .runtime-meta {
+                    align-self: center;
+                    padding-bottom: 0;
+
+  }
+
+          .runtime-topbar {
+                    padding-bottom: 12px;
+
+  }
+
+          .runtime-controls #start-or-next {
+                    height: 44px;
+                    min-height: 44px;
+
+  }
+
+
+  /* F. Smaller AI Interviewer card so it covers less of the camera image */
+          .runtime-avatar {
+                    width: 168px;
+                    min-height: 0;
+                    gap: 8px;
+                    padding: 12px;
+
+  }
+}
+
+/* C. Keep video and chat side by side down to 901px (previously stacked below 1025px) */
+@media (min-width: 901px) and (max-width: 1024px) {
+          .runtime-page {
+                    height: calc(100vh - 28px);
+                    min-height: 0;
+
+  }
+
+          .runtime-layout {
+                    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+                    height: 100%;
+                    overflow: hidden;
+
+  }
+
+          .runtime-stage,
+          .runtime-sidebar {
+                    height: 100%;
+
+  }
+
+          .runtime-video {
+                    min-height: 0;
+                    max-height: none;
+
+  }
+}
+
+/* Side-by-side layouts: the conversation takes the remaining panel height */
+@media (min-width: 901px) {
+          .runtime-sidebar-panel#runtime-panel-conversation {
+                    overflow: hidden;
+
+  }
+
+          #runtime-panel-conversation > .runtime-conversation {
+                    height: auto;
+                    min-height: 0;
+
+  }
+}
+
+/* Stacked tablet layout: shorter video and chat so the answer box is reached sooner */
+@media (min-width: 641px) and (max-width: 900px) {
+          .runtime-video {
+                    min-height: 0;
+                    height: min(46vh, 420px);
+                    max-height: min(46vh, 420px);
+
+  }
+
+          #runtime-panel-conversation > .runtime-conversation {
+                    height: clamp(220px, 34vh, 360px);
+                    min-height: 220px;
+
+  }
+}
+
+/* G. Phones: title may wrap to two lines; help and info grouped left, stop on the right */
+@media (max-width: 640px) {
+          .runtime-topbar h3 {
+                    display: -webkit-box;
+                    -webkit-box-orient: vertical;
+                    -webkit-line-clamp: 2;
+                    line-clamp: 2;
+                    white-space: normal;
+                    font-size: 0.95rem;
+
+  }
+
+          .runtime-meta > #btn-runtime-tour {
+                    justify-self: start;
+
+  }
+
+          .runtime-controls {
+                    padding: 8px 0 0;
+
+  }
+}
+
+/* F. Very narrow phones: keep the live status readable; the robot icon identifies the interviewer */
+@media (max-width: 390px) {
+          .runtime-avatar-status > span:last-child {
+                    max-width: none;
+                    overflow: visible;
+
+  }
+
+          .runtime-avatar-label > span {
+                    display: none;
+
+  }
+}
+
+/* Back button had no border rule and showed the browser's bevelled default */
+.runtime-back-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid #d5dce4;
+          background: #ffffff;
+          color: var(--jb-action-active-background, #0f766e);
+          cursor: pointer;
+}
+
+/* Narrower stages: centre group takes the free space so it never collides with the side groups */
+@media (min-width: 641px) and (max-width: 1180px) {
+          .runtime-controls {
+                    grid-template-columns: auto minmax(0, 1fr) auto;
+
+  }
+
+            .runtime-controls #start-or-next {
+                      min-width: 0;
+                      padding-right: 14px;
+                      padding-left: 14px;
+
+    }
+}
+
+/* ---- Phase 6.1: compact spacing, short-window fix, compact credit warning ---- */
+
+/* Compact frame: less outer space so the video and chat get more room */
+.runtime-shell {
+          padding: 8px;
+}
+
+.runtime-page {
+          min-height: calc(100vh - 16px);
+          padding: 12px;
+}
+
+.runtime-layout {
+          gap: 10px;
+          padding-top: 8px;
+}
+
+.runtime-stage,
+.runtime-sidebar {
+          gap: 8px;
+          padding: 8px;
+}
+
+.runtime-sidebar-panel#runtime-panel-conversation {
+          gap: 8px;
+}
+
+.runtime-status-region:has(> :not(.runtime-progress):not(.runtime-js-hidden)) {
+          padding-top: 8px;
+}
+
+@media (min-width: 641px) {
+          .runtime-topbar {
+                    padding-bottom: 8px;
+
+  }
+}
+
+@media (min-width: 901px) {
+          .runtime-page {
+                    height: calc(100vh - 16px);
+
+  }
+
+
+  /* Short browser windows: the video must shrink instead of sliding under the controls */
+          .runtime-video {
+                    min-height: 0;
+
+  }
+}
+
+/* Credit warning: one slim row with a small Upgrade button */
+.runtime-credit-warning {
+          min-height: 0;
+          gap: 12px;
+          padding: 6px 8px 6px 12px;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          line-height: 1.35;
+}
+
+  .runtime-credit-warning .runtime-credit-upgrade {
+            min-width: 0;
+            min-height: 32px;
+            height: 32px;
+            padding: 0 16px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            line-height: 32px;
+  }
+
+@media (max-width: 640px) {
+          .runtime-credit-warning {
+                    flex-direction: row;
+                    align-items: center;
+                    padding: 8px 8px 8px 10px;
+                    font-size: 0.8rem;
+
+  }
+
+            .runtime-credit-warning .runtime-credit-upgrade {
+                      align-self: center;
+
+    }
+}
+
+@media (max-width: 640px) {
+
+  /* Phone header icons: centre the icon inside each 44px button (the "?" was clipped at the left edge) */
+          .runtime-meta > .runtime-feedback-trigger,
+          .runtime-meta > #btn-runtime-tour,
+          .runtime-meta > .runtime-stop-button {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0;
+
+  }
+}
