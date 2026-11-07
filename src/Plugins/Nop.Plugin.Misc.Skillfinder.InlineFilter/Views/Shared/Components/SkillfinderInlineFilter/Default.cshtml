@@ -1,0 +1,70 @@
+@model PublicInfoModel
+@{
+    Layout = "";
+    var resultsId = "skillfinder-inline-results";
+    var loadingId = "skillfinder-inline-loading";
+
+    NopHtml.AppendCssFileParts("~/Plugins/Misc.Skillfinder.InlineFilter/Content/css/inline-filter.css");
+}
+
+<script src="~/lib_npm/htmx.org/dist/htmx.min.js"
+        asp-location="Footer"
+        onerror="this.onerror=null;this.src='@Url.Content("~/Plugins/Misc.Skillfinder.InlineFilter/Content/js/htmx.min.js")';"></script>
+<script src="~/Plugins/Misc.Skillfinder.InlineFilter/Content/js/inline-filter.js" asp-location="Footer"></script>
+
+<section class="sfi-inline-filter" aria-labelledby="skillfinder-inline-filter-title" data-sfi-inline-filter>
+    <header class="sfi-heading">
+        <span class="sfi-eyebrow">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Eyebrow")</span>
+        <h5 id="skillfinder-inline-filter-title">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Title")</h5>
+    </header>
+
+    @if (Model.Categories.Any())
+    {
+        <div class="sfi-filter-actions">
+            <div class="sfi-category-tabs-wrap">
+                <div class="sfi-category-tabs"
+                     role="group"
+                     aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.CategoriesLabel")">
+                    @foreach (var category in Model.Categories)
+                    {
+                        var categoryViewMoreUrl = Url.RouteUrl("Category", new { SeName = category.SeName });
+                        <button type="button"
+                                class="sfi-category-tab @(category.IsSelected ? "is-selected" : null)"
+                                aria-pressed="@category.IsSelected.ToString().ToLowerInvariant()"
+                                aria-controls="@resultsId"
+                                data-sfi-category-tab
+                                data-sfi-view-more-url="@categoryViewMoreUrl"
+                                hx-get="@Url.RouteUrl(SkillfinderInlineFilterDefaults.RouteName, new { categorySeName = category.SeName })"
+                                hx-target="#@resultsId"
+                                hx-swap="innerHTML"
+                                hx-indicator="#@loadingId">
+                            @category.Name
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Results.ViewMoreUrl) && !string.IsNullOrWhiteSpace(Model.Results.SelectedCategorySeName))
+            {
+                <div class="sfi-view-more-wrap">
+                    <a class="sfi-view-more" href="@Model.Results.ViewMoreUrl" data-sfi-view-more>
+                        @T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ViewMore")
+                    </a>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="sfi-results-shell">
+        <div id="@loadingId" class="sfi-loading htmx-indicator" role="status" aria-live="polite">
+            <span class="sfi-loading-text">@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.Loading")</span>
+        </div>
+        <div id="@resultsId"
+             class="sfi-results"
+             aria-live="polite"
+             aria-busy="false"
+             aria-label="@T($"{SkillfinderInlineFilterDefaults.LocalizationPrefix}.ResultsLabel")">
+            @await Html.PartialAsync("~/Plugins/Misc.Skillfinder.InlineFilter/Views/_FilteredProductsGrid.cshtml", Model.Results)
+        </div>
+    </div>
+</section>

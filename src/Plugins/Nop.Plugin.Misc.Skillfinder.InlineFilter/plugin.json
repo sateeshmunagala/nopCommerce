@@ -1,0 +1,11 @@
+{
+  "Group": "Misc",
+  "FriendlyName": "Skillfinder inline filter",
+  "SystemName": "Misc.Skillfinder.InlineFilter",
+  "Version": "1.00",
+  "SupportedVersions": [ "5.00" ],
+  "Author": "Skillfinder",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Misc.Skillfinder.InlineFilter.dll",
+  "Description": "Homepage category pills with HTMX-powered inline job results."
+}
