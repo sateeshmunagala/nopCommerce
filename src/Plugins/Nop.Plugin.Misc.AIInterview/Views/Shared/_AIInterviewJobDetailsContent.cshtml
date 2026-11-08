@@ -376,7 +376,7 @@
         </div>
     </section>
 
-    @if (isDrawer)
+    @if (!isDrawer)
     {
         <aside class="job-side">
             @await Component.InvokeAsync(typeof(AIInterviewProductDetailsViewComponent), new

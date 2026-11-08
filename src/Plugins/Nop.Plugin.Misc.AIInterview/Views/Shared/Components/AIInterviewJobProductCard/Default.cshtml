@@ -56,22 +56,22 @@
                 @Model.JobTitle
             </a>
             @if (!string.IsNullOrWhiteSpace(Model.CompanyName) || !string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
-            {
-                <div class="ai-job-card-subline">
-                    @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
-                    {
-                        <span class="ai-job-card-company" title="@Model.CompanyName">@Model.CompanyName</span>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
-                    {
-                        <span class="ai-job-card-location" title="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)">
-                            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
-                            <span class="sr-only">@jobLocationLabel:</span>
-                            @Model.Specifications.JobLocation
-                        </span>
-                    }
-                </div>
-            }
+            {
+                <div class="ai-job-card-subline">
+                    @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
+                    {
+                        <span class="ai-job-card-company" title="@Model.CompanyName">@Model.CompanyName</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
+                    {
+                        <span class="ai-job-card-location" title="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)">
+                            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                            <span class="sr-only">@jobLocationLabel:</span>
+                            @Model.Specifications.JobLocation
+                        </span>
+                    }
+                </div>
+            }
             @if (!string.IsNullOrWhiteSpace(Model.PostedLabel))
             {
                 <span class="ai-job-card-posted-badge@(Model.IsStaleJob ? " ai-job-card-posted-badge-stale" : Model.IsAgingJob ? " ai-job-card-posted-badge-aging" : string.Empty)">@Model.PostedLabel</span>
