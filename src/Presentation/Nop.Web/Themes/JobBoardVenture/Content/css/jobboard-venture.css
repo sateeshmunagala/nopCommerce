@@ -17383,18 +17383,23 @@ html .master-column-wrapper > .side-2:not(:has(.jb-job-listing-sidebar > *)):not
     margin-bottom: 0;
 }
 
-/* ========================================================================== Phase 7: quick wins ========================================================================== */ /* Institute dashboard: active tab text was teal on light grey (2.3:1);
+/* ========================================================================== 
+    Phase 7: quick wins 
+    ========================================================================== */ /* 
+    Institute dashboard: active tab text was teal on light grey (2.3:1);
 use the dark teal (AA contrast) */
 
 .html-aiinterview-institute-dashboard-page .institute-dashboard-tab.is-active {
   color: var(--jb-action-active-background, #0f766e);
 }
 
-/* Vendor-portal header (employer/institute): plain links sat 8px above the name and credits */ html.html-vendor-portal-page .header-links li {
+/* Vendor-portal header (employer/institute): plain links sat 8px above the name and credits */ 
+html.html-vendor-portal-page .header-links li {
   align-items: center;
 }
 
-/* Homepage FAQ card: title matches the other homepage section titles */ .jb-home-landing .jb-home-topic-faq .topic-block-title h2, .jb-home-landing .jb-home-topic-faq .topic-block h2:first-child {
+/* Homepage FAQ card: title matches the other homepage section titles */ 
+.jb-home-landing .jb-home-topic-faq .topic-block-title h2, .jb-home-landing .jb-home-topic-faq .topic-block h2:first-child {
   margin: 0 0 var(--jb-title-gap, 16px);
   font-size: 1.75rem;
   font-weight: 700;
