@@ -55,10 +55,23 @@
                title="@Model.JobTitle">
                 @Model.JobTitle
             </a>
-            @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
-            {
-                <div class="ai-job-card-company" title="@Model.CompanyName">@Model.CompanyName</div>
-            }
+            @if (!string.IsNullOrWhiteSpace(Model.CompanyName) || !string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
+            {
+                <div class="ai-job-card-subline">
+                    @if (!string.IsNullOrWhiteSpace(Model.CompanyName))
+                    {
+                        <span class="ai-job-card-company" title="@Model.CompanyName">@Model.CompanyName</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
+                    {
+                        <span class="ai-job-card-location" title="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)">
+                            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                            <span class="sr-only">@jobLocationLabel:</span>
+                            @Model.Specifications.JobLocation
+                        </span>
+                    }
+                </div>
+            }
             @if (!string.IsNullOrWhiteSpace(Model.PostedLabel))
             {
                 <span class="ai-job-card-posted-badge@(Model.IsStaleJob ? " ai-job-card-posted-badge-stale" : Model.IsAgingJob ? " ai-job-card-posted-badge-aging" : string.Empty)">@Model.PostedLabel</span>
@@ -92,7 +105,7 @@
             <div class="ai-job-card-summary" title="@Model.Summary">@Model.Summary</div>
         }
 
-        <div class="ai-job-card-meta">
+        <div class="ai-job-card-meta ai-job-card-tags">
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.WorkArrangement))
             {
                 <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(workArrangementLabel, Model.Specifications.WorkArrangement)" aria-label="@BuildAccessibleSpecText(workArrangementLabel, Model.Specifications.WorkArrangement)">
@@ -107,13 +120,13 @@
                     <span class="ai-job-card-spec-value">@Model.Specifications.EmploymentType</span>
                 </span>
             }
-            @if (!string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
+            @* @if (!string.IsNullOrWhiteSpace(Model.Specifications.JobLocation))
             {
                 <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)" aria-label="@BuildAccessibleSpecText(jobLocationLabel, Model.Specifications.JobLocation)">
                     <i class="fa-solid fa-location-dot ai-job-card-spec-icon" aria-hidden="true"></i>
                     <span class="ai-job-card-spec-value">@Model.Specifications.JobLocation</span>
                 </span>
-            }
+            } *@
             @if (!string.IsNullOrWhiteSpace(Model.Specifications.ExperienceLevel))
             {
                 <span class="ai-job-card-spec" title="@BuildAccessibleSpecText(experienceLevelLabel, Model.Specifications.ExperienceLevel)" aria-label="@BuildAccessibleSpecText(experienceLevelLabel, Model.Specifications.ExperienceLevel)">
