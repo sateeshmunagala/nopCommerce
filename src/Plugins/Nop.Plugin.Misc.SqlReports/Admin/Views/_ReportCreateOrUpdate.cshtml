@@ -1,0 +1,97 @@
+@model SqlReportModel
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="form-horizontal">
+            <div class="cards-group">
+                <div class="card card-default">
+                    <div class="card-body">
+                        <div asp-validation-summary="ModelOnly"></div>
+                        <input asp-for="Id" type="hidden" />
+
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="Name" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="Name" asp-required="true" />
+                                <span asp-validation-for="Name"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="SystemName" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="SystemName" />
+                                <span asp-validation-for="SystemName"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="Description" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-textarea asp-for="Description" />
+                                <span asp-validation-for="Description"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="SqlQuery" />
+                            </div>
+                            <div class="col-md-9">
+                                <textarea asp-for="SqlQuery" class="form-control" rows="14"></textarea>
+                                <span asp-validation-for="SqlQuery"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="SelectedParameterIds" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-select asp-for="SelectedParameterIds" asp-items="Model.AvailableParameters" asp-multiple="true" />
+                                <script>
+                                    $(function () {
+                                        $('#@Html.IdFor(model => model.SelectedParameterIds)').select2({ closeOnSelect: false });
+                                    });
+                                </script>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="SelectedCustomerRoleIds" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-select asp-for="SelectedCustomerRoleIds" asp-items="Model.AvailableCustomerRoles" asp-multiple="true" />
+                                <script>
+                                    $(function () {
+                                        $('#@Html.IdFor(model => model.SelectedCustomerRoleIds)').select2({ closeOnSelect: false });
+                                    });
+                                </script>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="IsActive" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="IsActive" />
+                                <span asp-validation-for="IsActive"></span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <nop-label asp-for="DisplayOrder" />
+                            </div>
+                            <div class="col-md-9">
+                                <nop-editor asp-for="DisplayOrder" />
+                                <span asp-validation-for="DisplayOrder"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
