@@ -29,6 +29,14 @@ public class RazorpayPublicController : BasePublicController
     private const string PaymentInfoAjaxConfirmSectionSuccessEvent = "RazorpayPaymentInfoAjaxConfirmSectionSuccess";
     private const string PaymentInfoAjaxUnexpectedResponseEvent = "RazorpayPaymentInfoAjaxUnexpectedResponse";
     private const string PaymentInfoAjaxTransportFailureEvent = "RazorpayPaymentInfoAjaxTransportFailure";
+    private const string CheckoutEntryEvent = "CheckoutEntry";
+    private const string PaymentMethodSaveDispatchEmptyEvent = "PaymentMethodSaveDispatchEmpty";
+    private const string PaymentMethodSaveDispatchRazorpayEvent = "PaymentMethodSaveDispatchRazorpay";
+    private const string PaymentMethodSaveDispatchOtherEvent = "PaymentMethodSaveDispatchOther";
+    private const string PaymentMethodSaveSkippedLoadWaitingEvent = "PaymentMethodSaveSkippedLoadWaiting";
+    private const string PaymentMethodSaveResponseSuccessEvent = "PaymentMethodSaveResponseSuccess";
+    private const string PaymentMethodSaveResponseJsonErrorEvent = "PaymentMethodSaveResponseJsonError";
+    private const string PaymentMethodSaveResponseTransportFailureEvent = "PaymentMethodSaveResponseTransportFailure";
     private static readonly Regex PaymentFailureSensitiveFieldRegex = new(
         @"(?i)\b(?<key>authorization|api[_ -]?key|token|secret|password|signature|credential|email|e-mail|phone|mobile|contact|name|address|card(?:[_ -]?(?:number|no))?|cvv|cvc|otp|upi|vpa|account(?:[_ -]?(?:number|no))?|customer(?:[_ -]?(?:id|identifier))?|payment(?:[_ -]?(?:id|identifier|reference))?|transaction(?:[_ -]?(?:id|reference))?|order(?:[_ -]?id)?)\b[""']?\s*[:=]\s*[""']?[^,;|}\]]+",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -67,14 +75,25 @@ public class RazorpayPublicController : BasePublicController
             PaymentInfoAjaxJsonErrorEvent or
             PaymentInfoAjaxConfirmSectionSuccessEvent or
             PaymentInfoAjaxUnexpectedResponseEvent or
-            PaymentInfoAjaxTransportFailureEvent;
+            PaymentInfoAjaxTransportFailureEvent or
+            CheckoutEntryEvent or
+            PaymentMethodSaveDispatchEmptyEvent or
+            PaymentMethodSaveDispatchRazorpayEvent or
+            PaymentMethodSaveDispatchOtherEvent or
+            PaymentMethodSaveSkippedLoadWaitingEvent or
+            PaymentMethodSaveResponseSuccessEvent or
+            PaymentMethodSaveResponseJsonErrorEvent or
+            PaymentMethodSaveResponseTransportFailureEvent;
     }
 
     private static bool IsPaymentInfoDiagnosticError(string error)
     {
         return error is PaymentInfoAjaxJsonErrorEvent or
             PaymentInfoAjaxUnexpectedResponseEvent or
-            PaymentInfoAjaxTransportFailureEvent;
+            PaymentInfoAjaxTransportFailureEvent or
+            PaymentMethodSaveDispatchEmptyEvent or
+            PaymentMethodSaveResponseJsonErrorEvent or
+            PaymentMethodSaveResponseTransportFailureEvent;
     }
 
     private static string GetSelectedPaymentMethodState(string selectedPaymentMethod)
@@ -87,18 +106,15 @@ public class RazorpayPublicController : BasePublicController
             : "another";
     }
 
-    private static string MaskRazorpayOrderId(string orderId)
+    private string GetCheckoutAttemptId()
     {
-        if (string.IsNullOrWhiteSpace(orderId))
-            return "none";
-
-        var trimmedOrderId = orderId.Trim();
-        return trimmedOrderId.Length <= 4
-            ? "***"
-            : $"***{trimmedOrderId[^4..]}";
+        var attemptId = Request.Cookies["spc_checkout_attempt"];
+        return !string.IsNullOrEmpty(attemptId) && attemptId.Length <= 16 && attemptId.All(char.IsLetterOrDigit)
+            ? attemptId
+            : "none";
     }
 
-    private async Task LogPaymentMethodSnapshotAsync(Customer customer, int storeId, string stage, string razorpayOrderId)
+    private async Task LogPaymentMethodSnapshotAsync(Customer customer, int storeId, string stage)
     {
         string selectedPaymentMethod;
         try
@@ -117,7 +133,7 @@ public class RazorpayPublicController : BasePublicController
         try
         {
             var selectedMethodState = GetSelectedPaymentMethodState(selectedPaymentMethod);
-            var logMessage = $"Stage={stage}; StoreId={storeId}; CustomerId={customer?.Id ?? 0}; SelectedMethodState={selectedMethodState}; RazorpayOrderId={MaskRazorpayOrderId(razorpayOrderId)};";
+            var logMessage = $"Stage={stage}; StoreId={storeId}; CustomerId={customer?.Id ?? 0}; AttemptId={GetCheckoutAttemptId()}; SelectedMethodState={selectedMethodState};";
 
             if (selectedMethodState == "razorpay")
                 await _logger.InformationAsync($"Razorpay checkout payment method snapshot. {logMessage}");
@@ -220,6 +236,7 @@ public class RazorpayPublicController : BasePublicController
     {
         var customer = await _workContext.GetCurrentCustomerAsync();
         var store = await _storeContext.GetCurrentStoreAsync();
+        await LogPaymentMethodSnapshotAsync(customer, store.Id, "CreateOrderEntry");
 
         try
         {
@@ -274,7 +291,7 @@ public class RazorpayPublicController : BasePublicController
             await _genericAttributeService.SaveAttributeAsync(customer, RazorpayDefaults.RazorpayOrderAmountAttribute, amountInSubunits, store.Id);
             await _genericAttributeService.SaveAttributeAsync(customer, RazorpayDefaults.RazorpayOrderCurrencyAttribute, currencyCode, store.Id);
 
-            await LogPaymentMethodSnapshotAsync(customer, store.Id, "CreateOrderResponse", razorpayOrderId);
+            await LogPaymentMethodSnapshotAsync(customer, store.Id, "CreateOrderResponse");
 
             return Json(new 
             { 
@@ -294,7 +311,7 @@ public class RazorpayPublicController : BasePublicController
         }
         catch (Exception ex)
         {
-            await _logger.ErrorAsync($"Razorpay CreateOrder failed. CustomerId: {customer.Id}, StoreId: {store.Id}", ex);
+            await _logger.ErrorAsync($"Razorpay CreateOrder failed. CustomerId: {customer.Id}, StoreId: {store.Id}, FailureType: {ex.GetType().Name}");
             return Json(new { error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderCreationFailed") });
         }
     }
@@ -307,7 +324,7 @@ public class RazorpayPublicController : BasePublicController
 
         try
         {
-            await LogPaymentMethodSnapshotAsync(customer, store.Id, "VerifyPaymentEntry", razorpay_order_id);
+            await LogPaymentMethodSnapshotAsync(customer, store.Id, "VerifyPaymentEntry");
 
             if (string.IsNullOrEmpty(razorpay_payment_id) || string.IsNullOrEmpty(razorpay_order_id) || string.IsNullOrEmpty(razorpay_signature))
             {
@@ -319,7 +336,7 @@ public class RazorpayPublicController : BasePublicController
 
             if (string.IsNullOrEmpty(serverOrderId) || !serverOrderId.Equals(razorpay_order_id, StringComparison.OrdinalIgnoreCase))
             {
-                await _logger.WarningAsync($"Razorpay VerifyPayment: Order mismatch. ServerOrderId: {serverOrderId}, ClientOrderId: {razorpay_order_id}, CustomerId: {customer.Id}, StoreId: {store.Id}");
+                await _logger.WarningAsync($"Razorpay VerifyPayment: Order mismatch. CustomerId: {customer.Id}, StoreId: {store.Id}");
                 return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderMismatch") });
             }
 
@@ -327,7 +344,7 @@ public class RazorpayPublicController : BasePublicController
 
             if (!isSignatureValid)
             {
-                await _logger.WarningAsync($"Razorpay VerifyPayment: Signature verification failed. RazorpayOrderId: {razorpay_order_id}, PaymentId: {razorpay_payment_id}, CustomerId: {customer.Id}, StoreId: {store.Id}");
+                await _logger.WarningAsync($"Razorpay VerifyPayment: Signature verification failed. CustomerId: {customer.Id}, StoreId: {store.Id}");
                 return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.VerificationFailed") });
             }
 
@@ -336,7 +353,7 @@ public class RazorpayPublicController : BasePublicController
 
             if (!payment.OrderId.Equals(razorpay_order_id, StringComparison.OrdinalIgnoreCase))
             {
-                await _logger.WarningAsync($"Razorpay VerifyPayment: Payment order mismatch. PaymentOrderId: {payment.OrderId}, ClientOrderId: {razorpay_order_id}, CustomerId: {customer.Id}, StoreId: {store.Id}");
+                await _logger.WarningAsync($"Razorpay VerifyPayment: Payment order mismatch. CustomerId: {customer.Id}, StoreId: {store.Id}");
                 return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.OrderMismatch") });
             }
 
@@ -356,17 +373,17 @@ public class RazorpayPublicController : BasePublicController
 
             if (!payment.Status.Equals("captured", StringComparison.OrdinalIgnoreCase))
             {
-                await _logger.WarningAsync($"Razorpay VerifyPayment: Payment not captured. Status: {payment.Status}, PaymentId: {razorpay_payment_id}, CustomerId: {customer.Id}, StoreId: {store.Id}");
+                await _logger.WarningAsync($"Razorpay VerifyPayment: Payment not captured. Status: {payment.Status}, CustomerId: {customer.Id}, StoreId: {store.Id}");
                 var errorMsg = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentNotCaptured"), payment.Status);
                 return Json(new { success = false, error = errorMsg });
             }
 
-            await LogPaymentMethodSnapshotAsync(customer, store.Id, "VerifyPaymentSuccessResponse", razorpay_order_id);
+            await LogPaymentMethodSnapshotAsync(customer, store.Id, "VerifyPaymentSuccessResponse");
             return Json(new { success = true });
         }
         catch (Exception ex)
         {
-            await _logger.ErrorAsync($"Razorpay VerifyPayment failed. RazorpayOrderId: {razorpay_order_id}, PaymentId: {razorpay_payment_id}, CustomerId: {customer.Id}, StoreId: {store.Id}", ex);
+            await _logger.ErrorAsync($"Razorpay VerifyPayment failed. CustomerId: {customer.Id}, StoreId: {store.Id}, FailureType: {ex.GetType().Name}");
             return Json(new { success = false, error = await _localizationService.GetResourceAsync("Plugins.Payments.Razorpay.PaymentFetchFailed") });
         }
     }
@@ -386,10 +403,6 @@ public class RazorpayPublicController : BasePublicController
                     NopCustomerDefaults.SelectedPaymentMethodAttribute,
                     store.Id);
                 var selectedMethodState = GetSelectedPaymentMethodState(selectedPaymentMethod);
-                var razorpayOrderId = await _genericAttributeService.GetAttributeAsync<string>(
-                    customer,
-                    RazorpayDefaults.RazorpayOrderIdAttribute,
-                    store.Id);
                 var loadWaitingState = error == PaymentInfoSaveInvokedEvent
                     ? context switch
                     {
@@ -398,7 +411,7 @@ public class RazorpayPublicController : BasePublicController
                         _ => "unknown"
                     }
                     : "not-reported";
-                var diagnosticMessage = $"Stage={error}; StoreId={store.Id}; CustomerId={customer.Id}; SelectedMethodState={selectedMethodState}; RazorpayOrderId={MaskRazorpayOrderId(razorpayOrderId)}; ClientReportedCheckoutLoadWaitingActive={loadWaitingState};";
+                var diagnosticMessage = $"Stage={error}; StoreId={store.Id}; CustomerId={customer.Id}; AttemptId={GetCheckoutAttemptId()}; SelectedMethodState={selectedMethodState}; ClientReportedCheckoutLoadWaitingActive={loadWaitingState};";
 
                 if (IsPaymentInfoDiagnosticError(error) || selectedMethodState != "razorpay")
                     await _logger.WarningAsync($"Razorpay checkout payment selection diagnostic. {diagnosticMessage}");

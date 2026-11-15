@@ -11,12 +11,18 @@ var SinglePageCheckout = (function () {
     paymentMethod: false,
     paymentInfo: false
   };
+  var checkoutAttemptId = '';
+  var checkoutDiagnosticUrl = '';
+  var paymentMethodRequests = new WeakSet();
+  var checkoutEntryReported = false;
 
   function init(config) {
     summaryUrl = config.summaryUrl || '';
     failureUrl = config.failureUrl || '';
     estimateShippingUrl = config.estimateShippingUrl || '';
     noShippingOptionsMessage = config.noShippingOptionsMessage || 'No shipping options found.';
+
+    initializeCheckoutDiagnostics();
 
     initAccordion();
     initCheckoutPipeline();
@@ -28,6 +34,110 @@ var SinglePageCheckout = (function () {
     maybeAutoSubmitBilling();
     updateConfirmButtonState();
     updatePrimaryColumnLayout();
+  }
+
+  function initializeCheckoutDiagnostics() {
+    var pluginScriptPath = '/Plugins/Misc.SinglePageCheckout/Content/single-page-checkout.js';
+    var script = Array.prototype.slice.call(document.querySelectorAll('script[src]')).find(function (item) {
+      return item.src.toLowerCase().indexOf(pluginScriptPath.toLowerCase()) !== -1;
+    });
+    var appPath = '';
+    if (script) {
+      try {
+        appPath = new URL(script.src, window.location.origin).pathname.replace(/\/Plugins\/Misc\.SinglePageCheckout\/Content\/single-page-checkout\.js.*$/i, '');
+      } catch (error) {
+        appPath = '';
+      }
+    }
+
+    checkoutDiagnosticUrl = window.location.origin + appPath + '/SinglePageCheckout/LogCheckoutDiagnostic';
+    checkoutAttemptId = readCheckoutAttemptId() || Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    document.cookie = 'spc_checkout_attempt=' + encodeURIComponent(checkoutAttemptId) + '; path=' + (appPath || '/') + '; max-age=1800; SameSite=Lax' + (window.location.protocol === 'https:' ? '; Secure' : '');
+
+    $(document)
+      .off('.spcPaymentDiagnostics')
+      .on('ajaxSend.spcPaymentDiagnostics', function (event, jqXHR, settings) {
+        if (!isPaymentMethodSaveRequest(settings && settings.url)) return;
+        paymentMethodRequests.add(jqXHR);
+      })
+      .on('ajaxSuccess.spcPaymentDiagnostics', function (event, jqXHR, settings, response) {
+        if (!paymentMethodRequests.delete(jqXHR)) return;
+        if (!response || typeof response !== 'object' || Array.isArray(response) || hasCheckoutJsonErrors(response)) {
+          reportCheckoutDiagnostic('PaymentMethodSaveResponseJsonError');
+          return;
+        }
+
+        reportCheckoutDiagnostic('PaymentMethodSaveResponseSuccess');
+      })
+      .on('ajaxError.spcPaymentDiagnostics', function (event, jqXHR, settings, thrownError) {
+        if (!paymentMethodRequests.delete(jqXHR)) return;
+        reportCheckoutDiagnostic(thrownError === 'parsererror' || jqXHR && jqXHR.statusText === 'parsererror'
+          ? 'PaymentMethodSaveResponseJsonError'
+          : 'PaymentMethodSaveResponseTransportFailure');
+      });
+
+    if (typeof PaymentMethod !== 'undefined' && PaymentMethod && typeof PaymentMethod.save === 'function' && !PaymentMethod.__spcDiagnosticWrapped) {
+      var originalPaymentMethodSave = PaymentMethod.save;
+      PaymentMethod.save = function () {
+        reportCheckoutDiagnostic('PaymentMethodSaveDispatch' + getCheckedPaymentMethodCategory());
+        if (typeof Checkout !== 'undefined' && Checkout.loadWaiting !== false) {
+          reportCheckoutDiagnostic('PaymentMethodSaveSkippedLoadWaiting');
+        }
+
+        return originalPaymentMethodSave.apply(this, arguments);
+      };
+      PaymentMethod.__spcDiagnosticWrapped = true;
+    }
+
+    if (!checkoutEntryReported) {
+      checkoutEntryReported = true;
+      reportCheckoutDiagnostic('CheckoutEntry');
+    }
+  }
+
+  function readCheckoutAttemptId() {
+    var match = document.cookie.match(/(?:^|; )spc_checkout_attempt=([a-z0-9]+)/i);
+    return match && match[1].length <= 16 ? match[1] : '';
+  }
+
+  function isPaymentMethodSaveRequest(url) {
+    try {
+      return new URL(url || '', window.location.origin).pathname.toLowerCase().replace(/\/+$/, '').endsWith('/opcsavepaymentmethod');
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function getCheckedPaymentMethodCategory() {
+    var checkedMethod = $('#checkout-payment-method-load input[name="paymentmethod"]:checked');
+    if (checkedMethod.length === 0) return 'Empty';
+    return (checkedMethod.val() || '').toString().toLowerCase().indexOf('razorpay') !== -1 ? 'Razorpay' : 'Other';
+  }
+
+  function hasCheckoutJsonErrors(response) {
+    var hasErrors = response.errors !== undefined && response.errors !== null &&
+      (Array.isArray(response.errors) ? response.errors.length > 0 :
+        typeof response.errors === 'string' ? response.errors.length > 0 :
+          typeof response.errors === 'object' ? Object.keys(response.errors).length > 0 : !!response.errors);
+
+    return response.success === false ||
+      (response.error !== undefined && response.error !== null && response.error !== false && response.error !== '') ||
+      hasErrors;
+  }
+
+  function reportCheckoutDiagnostic(stage) {
+    if (!checkoutDiagnosticUrl) return;
+
+    var token = document.querySelector('input[name="__RequestVerificationToken"]');
+    var data = new FormData();
+    if (token) data.append('__RequestVerificationToken', token.value);
+    data.append('stage', stage);
+
+    fetch(checkoutDiagnosticUrl, {
+      method: 'POST',
+      body: data,
+      credentials: 'same-origin'
+    }).catch(function () { });
   }
 
   function updatePrimaryColumnLayout() {

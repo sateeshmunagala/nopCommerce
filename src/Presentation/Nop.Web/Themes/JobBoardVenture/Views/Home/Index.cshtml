@@ -35,7 +35,7 @@
     }
 
     NopHtml.AppendPageCssClassParts("html-home-page");
-    const string mockPracticeUrl = "/generic-ai-interview-practice";
+    const string mockPracticeUrl = "/Resume-AI-Interview";
 
     var homepageTopContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageTop }));
     var homepageBeforeCategoriesContent = ToHtmlString(await Component.InvokeAsync(typeof(WidgetViewComponent), new { widgetZone = PublicWidgetZones.HomepageBeforeCategories }));

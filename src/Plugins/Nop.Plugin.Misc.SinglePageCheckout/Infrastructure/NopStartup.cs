@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +16,7 @@ public class NopStartup : INopStartup
         services.AddScoped<ISinglePageCheckoutPageModelFactory, SinglePageCheckoutPageModelFactory>();
         services.AddScoped<SinglePageCheckoutModelTuner>();
         services.AddScoped<CheckoutModelFactory>();
+        services.AddScoped<PaymentSelectionDiagnosticFilter>();
 
         // Wrap/decorate standard ICheckoutModelFactory
         services.AddScoped<ICheckoutModelFactory, SinglePageCheckoutCheckoutModelFactory>();
@@ -23,6 +24,7 @@ public class NopStartup : INopStartup
         services.Configure<MvcOptions>(options =>
         {
             options.Filters.Add(typeof(BypassCartActionFilter));
+            options.Filters.AddService<PaymentSelectionDiagnosticFilter>();
         });
     }
 
