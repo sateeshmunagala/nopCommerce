@@ -30,8 +30,10 @@ public class SinglePageCheckoutController : BasePluginController
         "PaymentMethodSaveDispatchOther",
         "PaymentMethodSaveSkippedLoadWaiting",
         "PaymentMethodSaveResponseSuccess",
+        "PaymentMethodSaveResponseNotPaymentInfo",
         "PaymentMethodSaveResponseJsonError",
-        "PaymentMethodSaveResponseTransportFailure"
+        "PaymentMethodSaveResponseTransportFailure",
+        "AutoPaymentMethodSaveSkippedLoadWaiting"
     };
 
     private readonly OrderSettings _orderSettings;
@@ -139,7 +141,7 @@ public class SinglePageCheckoutController : BasePluginController
         var message = $"Stage={stage}; StoreId={store?.Id ?? 0}; CustomerId={customer?.Id ?? 0}; AttemptId={attemptId};";
 
         if (stage.EndsWith("JsonError", StringComparison.Ordinal) || stage.EndsWith("TransportFailure", StringComparison.Ordinal) ||
-            stage == "PaymentMethodSaveDispatchEmpty")
+            stage == "PaymentMethodSaveDispatchEmpty" || stage == "AutoPaymentMethodSaveSkippedLoadWaiting")
             await _logger.WarningAsync($"Single Page Checkout browser diagnostic. {message}");
         else
             await _logger.InformationAsync($"Single Page Checkout browser diagnostic. {message}");

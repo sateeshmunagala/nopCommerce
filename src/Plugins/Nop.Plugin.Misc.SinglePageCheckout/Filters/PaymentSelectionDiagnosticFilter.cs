@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
+using Nop.Services.Common;
 using Nop.Services.Configuration;
-using Nop.Services.Customers;
 using Nop.Services.Logging;
 
 namespace Nop.Plugin.Misc.SinglePageCheckout.Filters;
@@ -70,6 +70,14 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
             return;
         }
 
+        var controllerCategory = isCheckout ? "Checkout" : isCartMutation ? "ShoppingCart" : "SinglePageCheckout";
+        var actionCategory = isCheckout
+            ? CheckoutActions.First(candidate => string.Equals(candidate, action, StringComparison.OrdinalIgnoreCase))
+            : isCartMutation
+                ? CartActions.First(candidate => string.Equals(candidate, action, StringComparison.OrdinalIgnoreCase))
+                : string.Equals(action, "Index", StringComparison.OrdinalIgnoreCase) ? "Index" : "BuyNow";
+        var attemptId = GetAttemptId(context.HttpContext.Request.Cookies[AttemptCookieName]);
+
         SinglePageCheckoutSettings settings;
         try
         {
@@ -77,6 +85,7 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
         }
         catch
         {
+            await LogPreparationWarningAsync(controllerCategory, actionCategory, "SettingsReadFailure", 0, 0, attemptId);
             await next();
             return;
         }
@@ -86,10 +95,8 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
             return;
         }
 
-        Customer customer;
-        int storeId;
-        string attemptId;
-        string path;
+        Customer customer = null;
+        int storeId = 0;
         string selectedBefore;
         string attemptedCategory;
         try
@@ -97,8 +104,6 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
             customer = await _workContext.GetCurrentCustomerAsync();
             var store = await _storeContext.GetCurrentStoreAsync();
             storeId = store?.Id ?? 0;
-            attemptId = GetAttemptId(context.HttpContext.Request.Cookies[AttemptCookieName]);
-            path = GetSafePath(context.HttpContext.Request.Path.Value);
             selectedBefore = await ReadSelectionStateAsync(customer, storeId);
             attemptedCategory = IsPaymentMethodSave(action, context)
                 ? GetSelectionState(context.ActionArguments.TryGetValue("paymentmethod", out var method) ? method as string : null)
@@ -106,6 +111,7 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
         }
         catch
         {
+            await LogPreparationWarningAsync(controllerCategory, actionCategory, "ContextPreparationFailure", customer?.Id ?? 0, storeId, attemptId);
             await next();
             return;
         }
@@ -116,9 +122,13 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
         {
             var selectedAfter = await ReadSelectionStateAsync(customer, storeId);
             var response = GetResponseFlags(executedContext);
-            var message = $"Action={action}; Path={path}; StoreId={storeId}; CustomerId={customerId}; AttemptId={attemptId}; Before={selectedBefore}; After={selectedAfter}; AttemptedMethod={attemptedCategory}; Response={response.Outcome}; ErrorFlag={response.Error}; ErrorsFlag={response.Errors}; SuccessFlag={response.Success};";
+            var message = $"ControllerCategory={controllerCategory}; ActionCategory={actionCategory}; StoreId={storeId}; CustomerId={customerId}; AttemptId={attemptId}; Before={selectedBefore}; After={selectedAfter}; AttemptedMethod={attemptedCategory}; Response={response.Outcome}; ErrorFlag={response.Error}; ErrorsFlag={response.Errors}; SuccessFlag={response.Success};";
 
-            if (IsPaymentMethodSave(action, context))
+            if (selectedBefore == "unavailable" || selectedAfter == "unavailable")
+            {
+                await _logger.WarningAsync($"Single Page Checkout payment selection diagnostic. Category=AttributeReadFailure; {message}");
+            }
+            else if (IsPaymentMethodSave(action, context))
             {
                 if (selectedAfter is "empty" or "unavailable" || response.Error || response.Errors || executedContext.Exception != null)
                     await _logger.WarningAsync($"Single Page Checkout payment method save diagnostic. {message}");
@@ -129,7 +139,7 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
             {
                 await _logger.WarningAsync($"Single Page Checkout Razorpay selection reset diagnostic. {message}");
             }
-            else if (IsPaymentSelectionRequiredBoundary(action) && (selectedAfter is "empty" or "unavailable"))
+            else if (IsPaymentSelectionRequiredBoundary(action) && selectedAfter == "empty")
             {
                 await _logger.WarningAsync($"Single Page Checkout missing payment selection diagnostic. {message}");
             }
@@ -140,6 +150,7 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
         }
         catch
         {
+            await LogPreparationWarningAsync(controllerCategory, actionCategory, "ResponseCaptureFailure", customerId, storeId, attemptId);
         }
     }
 
@@ -195,14 +206,16 @@ public class PaymentSelectionDiagnosticFilter : IAsyncActionFilter
             : "none";
     }
 
-    private static string GetSafePath(string path)
+    private async Task LogPreparationWarningAsync(string controllerCategory, string actionCategory, string category, int customerId, int storeId, string attemptId)
     {
-        if (string.IsNullOrEmpty(path))
-            return "/";
-
-        var safePath = new string(path.Take(180).Select(character =>
-            char.IsLetterOrDigit(character) || character is '/' or '-' or '_' or '.' ? character : '_').ToArray());
-        return safePath;
+        try
+        {
+            await _logger.WarningAsync(
+                $"Single Page Checkout payment selection diagnostic. Category={category}; ControllerCategory={controllerCategory}; ActionCategory={actionCategory}; StoreId={storeId}; CustomerId={customerId}; AttemptId={attemptId};");
+        }
+        catch
+        {
+        }
     }
 
     private static (string Outcome, bool Error, bool Errors, bool? Success) GetResponseFlags(ActionExecutedContext context)

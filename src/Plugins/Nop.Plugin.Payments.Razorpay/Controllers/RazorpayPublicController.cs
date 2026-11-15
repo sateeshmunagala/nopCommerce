@@ -29,14 +29,6 @@ public class RazorpayPublicController : BasePublicController
     private const string PaymentInfoAjaxConfirmSectionSuccessEvent = "RazorpayPaymentInfoAjaxConfirmSectionSuccess";
     private const string PaymentInfoAjaxUnexpectedResponseEvent = "RazorpayPaymentInfoAjaxUnexpectedResponse";
     private const string PaymentInfoAjaxTransportFailureEvent = "RazorpayPaymentInfoAjaxTransportFailure";
-    private const string CheckoutEntryEvent = "CheckoutEntry";
-    private const string PaymentMethodSaveDispatchEmptyEvent = "PaymentMethodSaveDispatchEmpty";
-    private const string PaymentMethodSaveDispatchRazorpayEvent = "PaymentMethodSaveDispatchRazorpay";
-    private const string PaymentMethodSaveDispatchOtherEvent = "PaymentMethodSaveDispatchOther";
-    private const string PaymentMethodSaveSkippedLoadWaitingEvent = "PaymentMethodSaveSkippedLoadWaiting";
-    private const string PaymentMethodSaveResponseSuccessEvent = "PaymentMethodSaveResponseSuccess";
-    private const string PaymentMethodSaveResponseJsonErrorEvent = "PaymentMethodSaveResponseJsonError";
-    private const string PaymentMethodSaveResponseTransportFailureEvent = "PaymentMethodSaveResponseTransportFailure";
     private static readonly Regex PaymentFailureSensitiveFieldRegex = new(
         @"(?i)\b(?<key>authorization|api[_ -]?key|token|secret|password|signature|credential|email|e-mail|phone|mobile|contact|name|address|card(?:[_ -]?(?:number|no))?|cvv|cvc|otp|upi|vpa|account(?:[_ -]?(?:number|no))?|customer(?:[_ -]?(?:id|identifier))?|payment(?:[_ -]?(?:id|identifier|reference))?|transaction(?:[_ -]?(?:id|reference))?|order(?:[_ -]?id)?)\b[""']?\s*[:=]\s*[""']?[^,;|}\]]+",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -75,25 +67,14 @@ public class RazorpayPublicController : BasePublicController
             PaymentInfoAjaxJsonErrorEvent or
             PaymentInfoAjaxConfirmSectionSuccessEvent or
             PaymentInfoAjaxUnexpectedResponseEvent or
-            PaymentInfoAjaxTransportFailureEvent or
-            CheckoutEntryEvent or
-            PaymentMethodSaveDispatchEmptyEvent or
-            PaymentMethodSaveDispatchRazorpayEvent or
-            PaymentMethodSaveDispatchOtherEvent or
-            PaymentMethodSaveSkippedLoadWaitingEvent or
-            PaymentMethodSaveResponseSuccessEvent or
-            PaymentMethodSaveResponseJsonErrorEvent or
-            PaymentMethodSaveResponseTransportFailureEvent;
+            PaymentInfoAjaxTransportFailureEvent;
     }
 
     private static bool IsPaymentInfoDiagnosticError(string error)
     {
         return error is PaymentInfoAjaxJsonErrorEvent or
             PaymentInfoAjaxUnexpectedResponseEvent or
-            PaymentInfoAjaxTransportFailureEvent or
-            PaymentMethodSaveDispatchEmptyEvent or
-            PaymentMethodSaveResponseJsonErrorEvent or
-            PaymentMethodSaveResponseTransportFailureEvent;
+            PaymentInfoAjaxTransportFailureEvent;
     }
 
     private static string GetSelectedPaymentMethodState(string selectedPaymentMethod)

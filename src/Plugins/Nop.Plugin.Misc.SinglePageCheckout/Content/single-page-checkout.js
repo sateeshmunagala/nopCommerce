@@ -67,7 +67,9 @@ var SinglePageCheckout = (function () {
           return;
         }
 
-        reportCheckoutDiagnostic('PaymentMethodSaveResponseSuccess');
+        reportCheckoutDiagnostic(isPaymentInfoStepResponse(response)
+          ? 'PaymentMethodSaveResponseSuccess'
+          : 'PaymentMethodSaveResponseNotPaymentInfo');
       })
       .on('ajaxError.spcPaymentDiagnostics', function (event, jqXHR, settings, thrownError) {
         if (!paymentMethodRequests.delete(jqXHR)) return;
@@ -123,6 +125,12 @@ var SinglePageCheckout = (function () {
     return response.success === false ||
       (response.error !== undefined && response.error !== null && response.error !== false && response.error !== '') ||
       hasErrors;
+  }
+
+  function isPaymentInfoStepResponse(response) {
+    return response.goto_section === 'payment_info' &&
+      response.update_section &&
+      response.update_section.name === 'payment-info';
   }
 
   function reportCheckoutDiagnostic(stage) {
@@ -491,6 +499,16 @@ var SinglePageCheckout = (function () {
   function ensureSelectedMethodsAdvance() {
     setTimeout(function () {
       if (Checkout.loadWaiting !== false) {
+        var waitingPaymentMethods = $('#checkout-payment-method-load input[name="paymentmethod"]');
+        var waitingPaymentInfoLoaded = $('#checkout-payment-info-load').children().length > 0;
+        var waitingConfirmLoaded = $('#checkout-confirm-order-load').children().length > 0 && $('#checkout-confirm-order-load .spc-placeholder').length === 0;
+        if (waitingPaymentMethods.length === 1 &&
+          waitingPaymentMethods.is(':checked') &&
+          !waitingPaymentInfoLoaded &&
+          !waitingConfirmLoaded &&
+          !autoSubmittedSelections.paymentMethod) {
+          reportCheckoutDiagnostic('AutoPaymentMethodSaveSkippedLoadWaiting');
+        }
         return;
       }
 
