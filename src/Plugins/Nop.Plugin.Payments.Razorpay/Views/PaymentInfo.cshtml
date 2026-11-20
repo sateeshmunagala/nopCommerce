@@ -14,6 +14,7 @@
 
     <div id="razorpay-error-message" class="spc-razorpay-error" style="display: none;"></div>
     <div id="razorpay-success-message" class="spc-razorpay-success" style="display: none;">@T("Plugins.Payments.Razorpay.PaymentInfo.Success")</div>
+    <div id="razorpay-order-status" class="spc-razorpay-success" role="status" aria-live="polite" style="display: none;"></div>
     <div id="razorpay-pending-message" class="spc-razorpay-pending" style="display: none;">@T("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment")</div>
 </div>
 
@@ -22,22 +23,135 @@
         var payButton = document.getElementById('razorpay-pay-button');
         var errorContainer = document.getElementById('razorpay-error-message');
         var successContainer = document.getElementById('razorpay-success-message');
+        var orderStatus = document.getElementById('razorpay-order-status');
         var pendingMessage = document.getElementById('razorpay-pending-message');
 
         var isPaymentVerified = false;
+        var isPaymentVerificationInProgress = false;
         var paymentInfoDiagnosticState = window.razorpayPaymentInfoDiagnosticState;
         if (!paymentInfoDiagnosticState) {
             paymentInfoDiagnosticState = {
                 paymentInfoSaveRequestPending: false,
                 observedPaymentInfoRequests: new WeakSet(),
+                paymentInfoRequestAttempts: new WeakMap(),
+                confirmationRequestAttempts: new WeakMap(),
+                pendingVerifiedPaymentAttempt: null,
+                verifiedPaymentAttempt: null,
+                paymentAttemptSequence: 0,
                 observerInstalled: false
             };
             window.razorpayPaymentInfoDiagnosticState = paymentInfoDiagnosticState;
         }
+        paymentInfoDiagnosticState.paymentInfoRequestAttempts = paymentInfoDiagnosticState.paymentInfoRequestAttempts || new WeakMap();
+        paymentInfoDiagnosticState.confirmationRequestAttempts = paymentInfoDiagnosticState.confirmationRequestAttempts || new WeakMap();
+        paymentInfoDiagnosticState.paymentAttemptSequence = paymentInfoDiagnosticState.paymentAttemptSequence || 0;
 
         if (typeof $ === 'undefined') {
             logErrorToDiagnosticEndpoint("JQueryMissing", "jQuery is required for Razorpay checkout binding.");
             return;
+        }
+
+        function isConfirmOrderRequest(url) {
+            try {
+                var saveUrl = typeof ConfirmOrder === 'undefined' || !ConfirmOrder ? '' : ConfirmOrder.saveUrl;
+                return !!saveUrl && new URL(url || '', window.location.origin).pathname.toLowerCase() ===
+                    new URL(saveUrl, window.location.origin).pathname.toLowerCase();
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function isValidConfirmSectionResponse(response) {
+            return !!response && typeof response === 'object' && !Array.isArray(response) &&
+                response.error !== true && response.success !== false && !response.error &&
+                !(Array.isArray(response.errors) && response.errors.length > 0) &&
+                response.goto_section === 'confirm_order' && response.update_section &&
+                response.update_section.name === 'confirm-order' &&
+                typeof response.update_section.html === 'string' && response.update_section.html.trim().length > 0;
+        }
+
+        function hasRenderedConfirmContent() {
+            var container = document.getElementById('checkout-confirm-order-load');
+            var button = document.getElementById('spc-confirm-order-button');
+            if (!container || !button || button.disabled || !container.children.length ||
+                container.querySelector('.spc-placeholder, .spc-pending-msg'))
+                return false;
+
+            return container.textContent.trim().length > 0 ||
+                !!container.querySelector('.checkout-data, .confirm-order, .terms-of-service, .captcha-box');
+        }
+
+        function requiresInteractiveCaptcha() {
+            var captcha = document.querySelector('#checkout-confirm-order-load .captcha-box');
+            if (!captcha)
+                return false;
+
+            return !!captcha.querySelector('iframe, .g-recaptcha, input[type="checkbox"], textarea[name="g-recaptcha-response"]');
+        }
+
+        function setOrderStatus(message, isError) {
+            var statusElement = document.getElementById('razorpay-order-status');
+            if (!statusElement)
+                return;
+
+            statusElement.textContent = message;
+            statusElement.className = isError ? 'spc-razorpay-error' : 'spc-razorpay-success';
+            statusElement.style.display = 'block';
+        }
+
+        function failPaymentInfoSave(attempt) {
+            if (!attempt || paymentInfoDiagnosticState.verifiedPaymentAttempt !== attempt || attempt.status !== 'saving')
+                return;
+
+            attempt.status = 'save-failed';
+            setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.SaveFailed").Text', true);
+            $('.payment-info-next-step-button').show();
+        }
+
+        function finishPaymentInfoSave(attempt) {
+            if (!attempt || paymentInfoDiagnosticState.verifiedPaymentAttempt !== attempt || attempt.status !== 'saving')
+                return;
+
+            if (!attempt.validResponse) {
+                failPaymentInfoSave(attempt);
+                return;
+            }
+
+            if (typeof Checkout === 'undefined' || Checkout.loadWaiting !== false || !hasRenderedConfirmContent()) {
+                attempt.status = 'not-ready';
+                setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.ConfirmationUnavailable").Text');
+                return;
+            }
+
+            attempt.status = 'ready';
+            var terms = document.getElementById('termsofservice');
+            if (terms && !terms.checked) {
+                setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.TermsRequired").Text');
+                return;
+            }
+
+            if (requiresInteractiveCaptcha()) {
+                setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.CaptchaRequired").Text');
+                return;
+            }
+
+            if (attempt.confirmationStarted || paymentInfoDiagnosticState.confirmationInProgress)
+                return;
+
+            attempt.confirmationStarted = true;
+            attempt.status = 'confirming';
+            paymentInfoDiagnosticState.confirmationInProgress = true;
+            setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.PlacingOrder").Text');
+            document.getElementById('spc-confirm-order-button').click();
+        }
+
+        function reportConfirmationFailure(attempt) {
+            if (!attempt || paymentInfoDiagnosticState.verifiedPaymentAttempt !== attempt || attempt.status !== 'confirming')
+                return;
+
+            attempt.status = 'confirmation-failed';
+            paymentInfoDiagnosticState.confirmationInProgress = false;
+            setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.ConfirmationFailed").Text', true);
         }
 
         // Hide standard checkout next button initially to enforce Razorpay flow
@@ -69,47 +183,83 @@
             paymentInfoDiagnosticState.observerInstalled = true;
             $(document)
                 .on('ajaxSend.razorpayPaymentInfoDiagnostics', function (event, jqXHR, settings) {
-                    if (!paymentInfoDiagnosticState.paymentInfoSaveRequestPending || !jqXHR || !isPaymentInfoSaveRequest(settings && settings.url))
+                    if (!jqXHR)
                         return;
 
-                    paymentInfoDiagnosticState.paymentInfoSaveRequestPending = false;
-                    paymentInfoDiagnosticState.observedPaymentInfoRequests.add(jqXHR);
+                    if (paymentInfoDiagnosticState.paymentInfoSaveRequestPending &&
+                        paymentInfoDiagnosticState.pendingVerifiedPaymentAttempt &&
+                        isPaymentInfoSaveRequest(settings && settings.url)) {
+                        paymentInfoDiagnosticState.paymentInfoSaveRequestPending = false;
+                        paymentInfoDiagnosticState.observedPaymentInfoRequests.add(jqXHR);
+                        paymentInfoDiagnosticState.paymentInfoRequestAttempts.set(jqXHR, paymentInfoDiagnosticState.pendingVerifiedPaymentAttempt);
+                    } else if (paymentInfoDiagnosticState.verifiedPaymentAttempt &&
+                        paymentInfoDiagnosticState.verifiedPaymentAttempt.status === 'confirming' &&
+                        isConfirmOrderRequest(settings && settings.url)) {
+                        paymentInfoDiagnosticState.confirmationRequestAttempts.set(jqXHR, paymentInfoDiagnosticState.verifiedPaymentAttempt);
+                    }
                 })
                 .on('ajaxSuccess.razorpayPaymentInfoDiagnostics', function (event, jqXHR, settings, response) {
-                    if (!paymentInfoDiagnosticState.observedPaymentInfoRequests.delete(jqXHR))
-                        return;
+                    var attempt = paymentInfoDiagnosticState.paymentInfoRequestAttempts.get(jqXHR);
+                    if (attempt) {
+                        if (!paymentInfoDiagnosticState.observedPaymentInfoRequests.delete(jqXHR))
+                            return;
 
-                    if (!response || typeof response !== 'object' || Array.isArray(response)) {
-                        logErrorToDiagnosticEndpoint('RazorpayPaymentInfoAjaxUnexpectedResponse', '');
+                        var hasObjectResponse = !!response && typeof response === 'object' && !Array.isArray(response);
+                        var hasJsonError = hasObjectResponse &&
+                            (response.success === false || response.error || (Array.isArray(response.errors) && response.errors.length > 0));
+                        var hasConfirmSection = isValidConfirmSectionResponse(response);
+                        attempt.validResponse = hasConfirmSection;
+                        if (!hasConfirmSection) {
+                            logErrorToDiagnosticEndpoint(
+                                hasJsonError ? 'RazorpayPaymentInfoAjaxJsonError' : 'RazorpayPaymentInfoAjaxUnexpectedResponse',
+                                '');
+                            return;
+                        }
+
+                        logErrorToDiagnosticEndpoint('RazorpayPaymentInfoAjaxConfirmSectionSuccess', '');
                         return;
                     }
 
-                    if (response.success === false || response.error || (Array.isArray(response.errors) && response.errors.length > 0)) {
-                        logErrorToDiagnosticEndpoint('RazorpayPaymentInfoAjaxJsonError', '');
-                        return;
+                    if (paymentInfoDiagnosticState.confirmationRequestAttempts.has(jqXHR)) {
+                        var confirmationAttempt = paymentInfoDiagnosticState.confirmationRequestAttempts.get(jqXHR);
+                        confirmationAttempt.confirmationResponse = response;
                     }
-
-                    var updateSection = response.update_section;
-                    var hasConfirmSection = updateSection &&
-                        typeof updateSection === 'object' &&
-                        updateSection.name === 'confirm-order' &&
-                        response.goto_section === 'confirm_order';
-
-                    logErrorToDiagnosticEndpoint(
-                        hasConfirmSection
-                            ? 'RazorpayPaymentInfoAjaxConfirmSectionSuccess'
-                            : 'RazorpayPaymentInfoAjaxUnexpectedResponse',
-                        '');
                 })
                 .on('ajaxError.razorpayPaymentInfoDiagnostics', function (event, jqXHR) {
-                    if (!paymentInfoDiagnosticState.observedPaymentInfoRequests.delete(jqXHR))
+                    var attempt = paymentInfoDiagnosticState.paymentInfoRequestAttempts.get(jqXHR);
+                    if (attempt && paymentInfoDiagnosticState.observedPaymentInfoRequests.delete(jqXHR)) {
+                        logErrorToDiagnosticEndpoint(
+                            jqXHR && jqXHR.status >= 200 && jqXHR.status < 300
+                                ? 'RazorpayPaymentInfoAjaxUnexpectedResponse'
+                                : 'RazorpayPaymentInfoAjaxTransportFailure',
+                            '');
+                        attempt.validResponse = false;
                         return;
+                    }
 
-                    logErrorToDiagnosticEndpoint(
-                        jqXHR && jqXHR.status >= 200 && jqXHR.status < 300
-                            ? 'RazorpayPaymentInfoAjaxUnexpectedResponse'
-                            : 'RazorpayPaymentInfoAjaxTransportFailure',
-                        '');
+                    if (paymentInfoDiagnosticState.confirmationRequestAttempts.has(jqXHR)) {
+                        var confirmationAttempt = paymentInfoDiagnosticState.confirmationRequestAttempts.get(jqXHR);
+                        confirmationAttempt.confirmationFailed = true;
+                    }
+                })
+                .on('ajaxComplete.razorpayPaymentInfoDiagnostics', function (event, jqXHR) {
+                    var attempt = paymentInfoDiagnosticState.paymentInfoRequestAttempts.get(jqXHR);
+                    if (attempt) {
+                        paymentInfoDiagnosticState.paymentInfoRequestAttempts.delete(jqXHR);
+                        if (paymentInfoDiagnosticState.observedPaymentInfoRequests.delete(jqXHR))
+                            attempt.validResponse = false;
+                        finishPaymentInfoSave(attempt);
+                        return;
+                    }
+
+                    var confirmationAttempt = paymentInfoDiagnosticState.confirmationRequestAttempts.get(jqXHR);
+                    if (confirmationAttempt) {
+                        paymentInfoDiagnosticState.confirmationRequestAttempts.delete(jqXHR);
+                        var response = confirmationAttempt.confirmationResponse;
+                        if (confirmationAttempt.confirmationFailed ||
+                            (response && !response.redirect && !response.success))
+                            reportConfirmationFailure(confirmationAttempt);
+                    }
                 });
         }
 
@@ -252,6 +402,10 @@
             });
 
         function verifyPayment(paymentId, orderId, signature) {
+            if (isPaymentVerificationInProgress || isPaymentVerified)
+                return;
+
+            isPaymentVerificationInProgress = true;
             var antiforgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
             var formData = new FormData();
             if (antiforgeryToken) {
@@ -274,18 +428,37 @@
             .then(function(data) {
                 if (data.success) {
                     logErrorToDiagnosticEndpoint('RazorpayVerifyPaymentResponseSuccess', '');
+                    isPaymentVerified = true;
+                    isPaymentVerificationInProgress = false;
+                    var attempt = {
+                        id: ++paymentInfoDiagnosticState.paymentAttemptSequence,
+                        status: 'saving',
+                        validResponse: false,
+                        confirmationStarted: false,
+                        confirmationResponse: null,
+                        confirmationFailed: false
+                    };
+                    paymentInfoDiagnosticState.verifiedPaymentAttempt = attempt;
+                    paymentInfoDiagnosticState.confirmationInProgress = false;
 
                     // Save to hidden fields for form submission
                     document.getElementById('RazorpayOrderId').value = orderId;
                     document.getElementById('RazorpayPaymentId').value = paymentId;
                     document.getElementById('RazorpaySignature').value = signature;
 
-                    isPaymentVerified = true;
                     pendingMessage.style.display = 'none';
 
                     document.getElementById('razorpay-instruction-message').style.display = 'none';
                     payButton.style.display = 'none';
                     successContainer.style.display = 'block';
+                    setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.PlacingOrder").Text');
+
+                    if (typeof Checkout !== 'undefined' && Checkout && Checkout.loadWaiting !== false) {
+                        attempt.status = 'save-deferred';
+                        setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.SaveDeferred").Text');
+                        $('.payment-info-next-step-button').show();
+                        return;
+                    }
 
                     // Trigger the checkout next button so they can proceed reliably
                     if (typeof PaymentInfo !== 'undefined' && PaymentInfo.save) {
@@ -293,6 +466,7 @@
                             ? 'unknown'
                             : Checkout.loadWaiting === false ? 'false' : 'active';
                         paymentInfoDiagnosticState.paymentInfoSaveRequestPending = true;
+                        paymentInfoDiagnosticState.pendingVerifiedPaymentAttempt = attempt;
                         logErrorToDiagnosticEndpoint(
                             'RazorpayPaymentInfoSaveInvoked',
                             'CheckoutLoadWaitingState=' + checkoutLoadWaitingState);
@@ -300,6 +474,7 @@
                             PaymentInfo.save();
                         } finally {
                             paymentInfoDiagnosticState.paymentInfoSaveRequestPending = false;
+                            paymentInfoDiagnosticState.pendingVerifiedPaymentAttempt = null;
                         }
                     } else {
                         var nextBtn = document.querySelector('.payment-info-next-step-button');
@@ -315,12 +490,14 @@
                         }
                     }
                 } else {
+                    isPaymentVerificationInProgress = false;
                     var errMsg = data.error || 'Payment verification failed.';
                     showError(errMsg);
                     logErrorToDiagnosticEndpoint("VerifyPaymentFailed", errMsg);
                 }
             })
             .catch(function(error) {
+                isPaymentVerificationInProgress = false;
                 showError('Error verifying payment.');
                 logErrorToDiagnosticEndpoint("VerifyPaymentException", error.message);
             });
