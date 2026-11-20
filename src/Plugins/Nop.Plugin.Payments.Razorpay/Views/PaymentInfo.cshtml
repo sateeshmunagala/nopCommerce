@@ -33,6 +33,7 @@
                 paymentInfoSaveRequestPending: false,
                 observedPaymentInfoRequests: new WeakSet(),
                 autoConfirmationAttempted: false,
+                automaticConfirmationPending: false,
                 observerInstalled: false
             };
             window.razorpayPaymentInfoDiagnosticState = paymentInfoDiagnosticState;
@@ -52,6 +53,17 @@
                 typeof response.update_section.html === 'string' && response.update_section.html.trim().length > 0;
         }
 
+        function isConfirmOrderRequest(url) {
+            try {
+                var saveUrl = typeof ConfirmOrder === 'undefined' || !ConfirmOrder ? '' : ConfirmOrder.saveUrl;
+                var requestPath = new URL(url || '', window.location.origin).pathname.toLowerCase().replace(/\/+$/, '');
+                var confirmPath = saveUrl ? new URL(saveUrl, window.location.origin).pathname.toLowerCase().replace(/\/+$/, '') : '';
+                return !!confirmPath && requestPath === confirmPath;
+            } catch (error) {
+                return false;
+            }
+        }
+
         function hasRenderedConfirmContent() {
             var container = document.getElementById('checkout-confirm-order-load');
             var button = document.getElementById('spc-confirm-order-button');
@@ -59,8 +71,7 @@
                 container.querySelector('.spc-placeholder, .spc-pending-msg, .message-error, .min-order-warning'))
                 return false;
 
-            var content = container.querySelector('.checkout-data');
-            return !!content && content.textContent.trim().length > 0;
+            return !!container.querySelector('.checkout-data');
         }
 
         function requiresInteractiveCaptcha() {
@@ -117,6 +128,7 @@
             }
 
             setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.PlacingOrder").Text');
+            paymentInfoDiagnosticState.automaticConfirmationPending = true;
             document.getElementById('spc-confirm-order-button').click();
         }
 
@@ -154,9 +166,18 @@
                         paymentInfoDiagnosticState.paymentInfoSaveRequestPending = false;
                         jqXHR.razorpayPaymentInfoSave = true;
                         paymentInfoDiagnosticState.observedPaymentInfoRequests.add(jqXHR);
+                    } else if (jqXHR && paymentInfoDiagnosticState.automaticConfirmationPending &&
+                        isConfirmOrderRequest(settings && settings.url)) {
+                        paymentInfoDiagnosticState.automaticConfirmationPending = false;
+                        jqXHR.razorpayAutomaticConfirmation = true;
                     }
                 })
                 .on('ajaxSuccess.razorpayPaymentInfoDiagnostics', function (event, jqXHR, settings, response) {
+                    if (jqXHR && jqXHR.razorpayAutomaticConfirmation) {
+                        jqXHR.razorpayConfirmationResponse = response;
+                        return;
+                    }
+
                     if (!jqXHR || !jqXHR.razorpayPaymentInfoSave || !paymentInfoDiagnosticState.observedPaymentInfoRequests.delete(jqXHR))
                         return;
 
@@ -174,6 +195,11 @@
                     logErrorToDiagnosticEndpoint('RazorpayPaymentInfoAjaxConfirmSectionSuccess', '');
                 })
                 .on('ajaxError.razorpayPaymentInfoDiagnostics', function (event, jqXHR) {
+                    if (jqXHR && jqXHR.razorpayAutomaticConfirmation) {
+                        jqXHR.razorpayConfirmationFailed = true;
+                        return;
+                    }
+
                     if (!jqXHR || !jqXHR.razorpayPaymentInfoSave || !paymentInfoDiagnosticState.observedPaymentInfoRequests.delete(jqXHR))
                         return;
 
@@ -184,6 +210,17 @@
                         '');
                 })
                 .on('ajaxComplete.razorpayPaymentInfoDiagnostics', function (event, jqXHR) {
+                    if (jqXHR && jqXHR.razorpayAutomaticConfirmation) {
+                        if (jqXHR.razorpayConfirmationHandled)
+                            return;
+                        jqXHR.razorpayConfirmationHandled = true;
+
+                        var response = jqXHR.razorpayConfirmationResponse;
+                        if (jqXHR.razorpayConfirmationFailed || !response || (!response.redirect && !response.success))
+                            setOrderStatus('@T("Plugins.Payments.Razorpay.PaymentInfo.ConfirmationFailed").Text', true);
+                        return;
+                    }
+
                     if (jqXHR && jqXHR.razorpayPaymentInfoSave)
                         finishPaymentInfoSave(jqXHR);
                 });
@@ -357,6 +394,7 @@
                     isPaymentVerified = true;
                     isPaymentVerificationInProgress = false;
                     paymentInfoDiagnosticState.autoConfirmationAttempted = false;
+                    paymentInfoDiagnosticState.automaticConfirmationPending = false;
 
                     // Save to hidden fields for form submission
                     document.getElementById('RazorpayOrderId').value = orderId;
