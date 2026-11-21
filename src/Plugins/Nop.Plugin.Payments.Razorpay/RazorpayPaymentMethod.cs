@@ -290,15 +290,8 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.MethodName", "Razorpay Hosted Checkout");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PayButton", "Pay with Razorpay");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Processing", "Processing...");
-        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Success", "Payment verified successfully.");
+        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Success", "Payment successful! You can now continue the checkout.");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment", "Please complete Razorpay payment before continuing checkout.");
-        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PlacingOrder", "Payment verified. Placing your order...");
-        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.SaveDeferred", "Payment verified. Checkout is busy; wait, then select Continue to proceed.");
-        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.ConfirmationUnavailable", "Payment verified, but order confirmation is not ready. Use Confirm order when the checkout controls become available.");
-        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.TermsRequired", "Payment verified. Accept the terms and select Confirm order to finish.");
-        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.CaptchaRequired", "Payment verified. Complete the CAPTCHA, then select Confirm order.");
-        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.SaveFailed", "Payment was verified, but checkout could not save the payment details. Select Continue to retry.");
-        await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.ConfirmationFailed", "Payment was verified, but order confirmation did not complete. Review any messages and select Confirm order to continue.");
         await _localizationService.AddOrUpdateLocaleResourceAsync("Plugins.Payments.Razorpay.ClientErrorLog", "Razorpay client error.");
 
         await base.InstallAsync();
@@ -344,13 +337,6 @@ public class RazorpayPaymentMethod : BasePlugin, IPaymentMethod
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Processing");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.Success");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PleaseCompletePayment");
-        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.PlacingOrder");
-        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.SaveDeferred");
-        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.ConfirmationUnavailable");
-        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.TermsRequired");
-        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.CaptchaRequired");
-        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.SaveFailed");
-        await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.PaymentInfo.ConfirmationFailed");
         await _localizationService.DeleteLocaleResourceAsync("Plugins.Payments.Razorpay.ClientErrorLog");
 
         await base.UninstallAsync();
